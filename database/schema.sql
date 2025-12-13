@@ -52,3 +52,15 @@ CREATE TABLE IF NOT EXISTS events (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (widget_id) REFERENCES widgets(id) ON DELETE CASCADE
 );
+-- Add Traffic Snapshots table
+CREATE TABLE IF NOT EXISTS traffic_snapshots (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    widget_id INT NOT NULL,
+    visitor_count INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (widget_id) REFERENCES widgets(id) ON DELETE CASCADE
+);
+
+-- Add Live Visitor Configuration to widgets
+ALTER TABLE widgets ADD COLUMN live_visitor_enabled BOOLEAN DEFAULT 0;
+ALTER TABLE widgets ADD COLUMN live_visitor_config TEXT DEFAULT NULL; -- JSON string for styles

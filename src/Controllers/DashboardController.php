@@ -53,11 +53,60 @@ class DashboardController {
             $notifications = $stmt->fetchAll();
 
             require_once __DIR__ . '/../../views/campaigns/live_conversion.php';
+        } elseif ($type === 'live-visitors') {
+
+            // Current Live Count (Last 30 mins)
+            $cutoff = date('Y-m-d H:i:s', strtotime('-30 minutes'));
+            $stmt = $pdo->prepare("SELECT COUNT(DISTINCT visitor_id) as count FROM live_visitors WHERE widget_id = ? AND last_seen > ?");
+            $stmt->execute([$widget['id'], $cutoff]);
+            $current_live = $stmt->fetch()['count'];
+
+            // Historical Graph Data (Traffic Snapshots)
+            // Fetch last 24 hours (or limit to last N points)
+            $stmt = $pdo->prepare("SELECT visitor_count, created_at FROM traffic_snapshots WHERE widget_id = ? ORDER BY created_at DESC LIMIT 288"); // 288 * 5 mins = 24 hours
+            $stmt->execute([$widget['id']]);
+            $graph_data = array_reverse($stmt->fetchAll()); // Oldest first for graph
+
+            // Config
+            $config = [
+                'enabled' => (bool)($widget['live_visitor_enabled'] ?? false),
+                'settings' => json_decode($widget['live_visitor_config'] ?? '{}', true)
+            ];
+
+            require_once __DIR__ . '/../../views/campaigns/live_visitors.php';
         } else {
             // Generic placeholder
             $campaignType = $type;
             require_once __DIR__ . '/../../views/campaigns/placeholder.php';
         }
+    }
+
+    public function saveLiveVisitorConfig() {
+        if (!isset($_SESSION['user_id'])) {
+           header('Location: /login');
+           exit;
+       }
+
+       $pdo = Database::getInstance();
+       $user_id = $_SESSION['user_id'];
+       $widget_id = $_POST['widget_id'];
+
+       // Ownership check
+       $stmt = $pdo->prepare("SELECT id FROM widgets WHERE id = ? AND user_id = ?");
+       $stmt->execute([$widget_id, $user_id]);
+       if (!$stmt->fetch()) { die("Unauthorized"); }
+
+       $enabled = isset($_POST['enabled']) ? 1 : 0;
+       $config = [
+           'position' => $_POST['position'] ?? 'bottom-left',
+           'bg_color' => $_POST['bg_color'] ?? '#ffffff',
+           'text_color' => $_POST['text_color'] ?? '#333333'
+       ];
+
+       $stmt = $pdo->prepare("UPDATE widgets SET live_visitor_enabled = ?, live_visitor_config = ? WHERE id = ?");
+       $stmt->execute([$enabled, json_encode($config), $widget_id]);
+
+       header('Location: /campaigns/live-visitors');
     }
 
     public function saveConfig() {

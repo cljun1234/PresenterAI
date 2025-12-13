@@ -39,7 +39,9 @@ class WidgetController {
             data = [];
 
             // 1. Live count
-            if (json.live_count > 0) {
+            // Only if enabled in config
+            const isLiveEnabled = json.config && json.config.live_visitor_enabled;
+            if (isLiveEnabled && json.live_count > 0) {
                  data.push({
                     type: 'live_count',
                     count: json.live_count,
@@ -62,7 +64,7 @@ class WidgetController {
             }
 
             if (data.length > 0) {
-                initWidget();
+                initWidget(json.config ? json.config.live_visitor_config : null);
             }
 
             if (json.config && json.config.magical_detection) {
@@ -180,24 +182,60 @@ class WidgetController {
         }, DISPLAY_DURATION_MS);
     }
 
-    function injectStyles() {
+    function injectStyles(config) {
+        let bottom = '20px';
+        let left = '20px';
+        let right = 'auto';
+        let bgColor = 'white';
+        let textColor = '#333';
+
+        if (config) {
+            if (config.position === 'bottom-right') {
+                left = 'auto';
+                right = '20px';
+            }
+            if (config.bg_color) bgColor = config.bg_color;
+            if (config.text_color) textColor = config.text_color;
+        }
+
         const style = document.createElement('style');
         style.innerHTML = `
-            .sales-notification-widget { position: fixed; bottom: 20px; left: 20px; z-index: 9999; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); padding: 10px; display: flex; align-items: center; width: 300px; opacity: 1; transform: translateX(0); transition: opacity 0.5s, transform 0.5s; font-family: sans-serif; }
-            .sales-notification-widget.hide { opacity: 0; transform: translateX(-150%); }
+            .sales-notification-widget {
+                position: fixed;
+                bottom: \${bottom};
+                left: \${left};
+                right: \${right};
+                z-index: 9999;
+                background: \${bgColor};
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                padding: 10px;
+                display: flex;
+                align-items: center;
+                width: 300px;
+                opacity: 1;
+                transform: translateX(0);
+                transition: opacity 0.5s, transform 0.5s;
+                font-family: sans-serif;
+                color: \${textColor};
+            }
+            .sales-notification-widget.hide {
+                opacity: 0;
+                transform: translateX(\${left === 'auto' ? '150%' : '-150%'});
+            }
             .sales-notification-widget .map-placeholder { width: 50px; height: 50px; background: #eee; border-radius: 4px; margin-right: 10px; flex-shrink: 0; overflow: hidden; }
             .sales-notification-widget .map-placeholder img { width: 100%; height: 100%; object-fit: cover; }
             .sales-notification-widget .content { display: flex; flex-direction: column; justify-content: center; flex-grow: 1; line-height: 1.2; }
-            .sales-notification-widget .name { font-weight: 700; color: #333; font-size: 14px; margin: 0; }
-            .sales-notification-widget .action-text { margin: 2px 0 5px 0; color: #555; font-size: 13px; }
+            .sales-notification-widget .name { font-weight: 700; color: inherit; font-size: 14px; margin: 0; }
+            .sales-notification-widget .action-text { margin: 2px 0 5px 0; color: inherit; opacity: 0.8; font-size: 13px; }
             .sales-notification-widget .verification { display: flex; align-items: center; font-size: 11px; color: #1a73e8; font-weight: 500; }
             .sales-notification-widget .checkmark { font-weight: bold; margin-right: 4px; }
         `;
         document.head.appendChild(style);
     }
 
-    function initWidget() {
-        injectStyles();
+    function initWidget(config) {
+        injectStyles(config);
         createWidget();
         startCycle();
     }
@@ -234,8 +272,11 @@ JS;
             return;
         }
 
-        // 1. Live Visitors
-        $stmt = $pdo->prepare("SELECT COUNT(DISTINCT visitor_id) as count FROM live_visitors WHERE widget_id = ? AND last_seen > (NOW() - INTERVAL 5 MINUTE)");
+        // Lazy Logging: Check if we need to take a snapshot
+        $this->logTrafficSnapshot($widget_id, $pdo);
+
+        // 1. Live Visitors (Active in last 30 minutes, distinct)
+        $stmt = $pdo->prepare("SELECT COUNT(DISTINCT visitor_id) as count FROM live_visitors WHERE widget_id = ? AND last_seen > (NOW() - INTERVAL 30 MINUTE)");
         $stmt->execute([$widget_id]);
         $live_count = $stmt->fetch()['count'];
 
@@ -266,14 +307,36 @@ JS;
 
         $notifications = array_merge($real, $simulated);
 
+        $live_config = json_decode($widget['live_visitor_config'] ?? '{}', true);
+
         echo json_encode([
             'config' => [
-                'magical_detection' => (bool)$widget['magical_detection']
+                'magical_detection' => (bool)$widget['magical_detection'],
+                'live_visitor_enabled' => (bool)($widget['live_visitor_enabled'] ?? false),
+                'live_visitor_config' => $live_config
             ],
             'live_count' => $live_count,
             'historical_count' => $historical_count,
             'notifications' => $notifications
         ]);
+    }
+
+    private function logTrafficSnapshot($widget_id, $pdo) {
+        // Check for any snapshot in the last 5 minutes (to avoid race conditions/duplicates)
+        $stmt = $pdo->prepare("SELECT id FROM traffic_snapshots WHERE widget_id = ? AND created_at > (NOW() - INTERVAL 5 MINUTE) LIMIT 1");
+        $stmt->execute([$widget_id]);
+        $recent_exists = $stmt->fetchColumn();
+
+        if (!$recent_exists) {
+            // Take snapshot
+            // Count distinct visitors active in last 30 mins
+            $stmt = $pdo->prepare("SELECT COUNT(DISTINCT visitor_id) FROM live_visitors WHERE widget_id = ? AND last_seen > (NOW() - INTERVAL 30 MINUTE)");
+            $stmt->execute([$widget_id]);
+            $count = $stmt->fetchColumn();
+
+            $stmt = $pdo->prepare("INSERT INTO traffic_snapshots (widget_id, visitor_count, created_at) VALUES (?, ?, NOW())");
+            $stmt->execute([$widget_id, $count]);
+        }
     }
 
     public function heartbeat() {
