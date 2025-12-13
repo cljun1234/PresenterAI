@@ -8,10 +8,10 @@ class Database {
         // In a real environment, use environment variables
         // For this sandbox, we'll default to localhost if not set, or a sqlite file for fallback testing
 
-        $host = getenv('DB_HOST') ?: '127.0.0.1';
-        $db   = getenv('DB_NAME') ?: 'trustabee';
-        $user = getenv('DB_USER') ?: 'root';
-        $pass = getenv('DB_PASS') ?: '';
+        $host = getenv('DB_HOST') ?: 'localhost';
+        $db   = getenv('DB_NAME') ?: 'u118256295_stg_trustabee';
+        $user = getenv('DB_USER') ?: 'u118256295_trustabee';
+        $pass = getenv('DB_PASS') ?: 'Trustabee123!';
         $driver = getenv('DB_DRIVER') ?: 'mysql';
 
         try {
