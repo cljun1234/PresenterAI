@@ -1,7 +1,8 @@
 <?php
 
 class DashboardController {
-    public function index() {
+
+    private function getWidgetAndUser() {
         if (!isset($_SESSION['user_id'])) {
             header('Location: /login');
             exit;
@@ -16,22 +17,47 @@ class DashboardController {
         $widget = $stmt->fetch();
 
         if (!$widget) {
-            // Should exist if created on login, but handling edge case
             echo "No widget found.";
             exit;
         }
 
-        // Fetch notifications
-        $stmt = $pdo->prepare("SELECT * FROM notifications WHERE widget_id = ? ORDER BY created_at DESC");
-        $stmt->execute([$widget['id']]);
-        $notifications = $stmt->fetchAll();
+        return [$pdo, $user_id, $widget];
+    }
+
+    public function index() {
+        list($pdo, $user_id, $widget) = $this->getWidgetAndUser();
 
         // Count live visitors (Active in last 5 mins)
-        $stmt = $pdo->prepare("SELECT COUNT(DISTINCT visitor_id) as count FROM live_visitors WHERE widget_id = ? AND last_seen > (NOW() - INTERVAL 5 MINUTE)");
-        $stmt->execute([$widget['id']]);
+        // Adjust date logic for PHP/MySQL compatibility
+        $cutoff = date('Y-m-d H:i:s', strtotime('-5 minutes'));
+        $stmt = $pdo->prepare("SELECT COUNT(DISTINCT visitor_id) as count FROM live_visitors WHERE widget_id = ? AND last_seen > ?");
+        $stmt->execute([$widget['id'], $cutoff]);
         $live_count = $stmt->fetch()['count'];
 
-        require_once __DIR__ . '/../../views/dashboard.php';
+        // require_once __DIR__ . '/../../views/dashboard.php';
+        require_once __DIR__ . '/../../views/pages/home.php';
+    }
+
+    public function settings() {
+        list($pdo, $user_id, $widget) = $this->getWidgetAndUser();
+        require_once __DIR__ . '/../../views/pages/settings.php';
+    }
+
+    public function campaigns($type) {
+        list($pdo, $user_id, $widget) = $this->getWidgetAndUser();
+
+        if ($type === 'live-conversion') {
+            // Fetch notifications
+            $stmt = $pdo->prepare("SELECT * FROM notifications WHERE widget_id = ? ORDER BY created_at DESC");
+            $stmt->execute([$widget['id']]);
+            $notifications = $stmt->fetchAll();
+
+            require_once __DIR__ . '/../../views/campaigns/live_conversion.php';
+        } else {
+            // Generic placeholder
+            $campaignType = $type;
+            require_once __DIR__ . '/../../views/campaigns/placeholder.php';
+        }
     }
 
     public function saveConfig() {
@@ -49,7 +75,7 @@ class DashboardController {
         $stmt = $pdo->prepare("UPDATE widgets SET magical_detection = ? WHERE user_id = ?");
         $stmt->execute([$magical, $user_id]);
 
-        header('Location: /');
+        header('Location: /settings');
     }
 
     public function addNotification() {
@@ -74,7 +100,7 @@ class DashboardController {
             $stmt->execute([$widget['id'], $name, $action]);
         }
 
-        header('Location: /');
+        header('Location: /campaigns/live-conversion');
     }
 
     public function deleteNotification($id) {
@@ -90,6 +116,6 @@ class DashboardController {
         $stmt = $pdo->prepare("DELETE n FROM notifications n JOIN widgets w ON n.widget_id = w.id WHERE n.id = ? AND w.user_id = ?");
         $stmt->execute([$id, $user_id]);
 
-        header('Location: /');
+        header('Location: /campaigns/live-conversion');
     }
 }

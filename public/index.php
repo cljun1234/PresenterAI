@@ -22,6 +22,9 @@ $router->map('GET', '/logout', 'AuthController#logout', 'logout');
 
 // Dashboard
 $router->map('GET', '/', 'DashboardController#index', 'dashboard');
+$router->map('GET', '/settings', 'DashboardController#settings', 'settings');
+$router->map('GET', '/campaigns/[*:type]', 'DashboardController#campaigns', 'campaigns');
+
 $router->map('POST', '/widget/save', 'DashboardController#saveConfig', 'save_config');
 $router->map('POST', '/notification/add', 'DashboardController#addNotification', 'add_notification');
 $router->map('GET', '/notification/delete/[i:id]', 'DashboardController#deleteNotification', 'delete_notification');
