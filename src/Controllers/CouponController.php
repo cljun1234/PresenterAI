@@ -28,16 +28,12 @@ class CouponController {
         return [$pdo, $user_id, $widget];
     }
 
-    // Called from DashboardController so we can pass widget_id if we want,
-    // but sticking to the pattern of self-retrieval ensures safety if routing changes.
-    // However, DashboardController already does the check. I'll make the argument optional.
     public function index($widget_id = null) {
         if ($widget_id === null) {
             list($pdo, $user_id, $widget) = $this->getWidgetAndUser();
             $widget_id = $widget['id'];
         } else {
              $pdo = Database::getInstance();
-             // We assume caller (DashboardController) did auth checks
              $stmt = $pdo->prepare("SELECT * FROM widgets WHERE id = ?");
              $stmt->execute([$widget_id]);
              $widget = $stmt->fetch();
@@ -48,7 +44,7 @@ class CouponController {
         $stmt->execute([$widget_id]);
         $coupons = $stmt->fetchAll();
 
-        // Analytics (Simple total views/clicks for now per coupon)
+        // Analytics
         foreach ($coupons as &$coupon) {
             $stmt = $pdo->prepare("SELECT COUNT(*) FROM coupon_analytics WHERE coupon_id = ? AND event_type = 'view'");
             $stmt->execute([$coupon['id']]);
@@ -77,17 +73,72 @@ class CouponController {
         $frequency = $_POST['frequency'];
         $match_url = $_POST['match_url'] ?: null;
         $active = isset($_POST['active']) ? 1 : 0;
+        $image_style = $_POST['image_style'] ?? 'top';
 
         $coupon_id = $_POST['coupon_id'] ?? null;
+        $image_url = null;
+
+        // Handle File Upload
+        if (isset($_FILES['image_upload']) && $_FILES['image_upload']['error'] == 0) {
+            $file = $_FILES['image_upload'];
+            $max_size = 15 * 1024 * 1024; // 15MB
+            $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+            if ($file['size'] > $max_size) {
+                die("File is too large. Max 15MB.");
+            }
+
+            // Secure Extension Check
+            $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            if (!in_array($ext, $allowed_exts)) {
+                die("Invalid file type. Allowed: jpg, png, gif, webp.");
+            }
+
+            // Ensure directory exists
+            $upload_dir = __DIR__ . '/../../public_html/uploads/coupons/';
+            if (!file_exists($upload_dir)) {
+                mkdir($upload_dir, 0755, true);
+            }
+
+            $filename = uniqid('banner_') . '.' . $ext;
+            $upload_path = $upload_dir . $filename;
+
+            if (move_uploaded_file($file['tmp_name'], $upload_path)) {
+                $image_url = '/uploads/coupons/' . $filename;
+            } else {
+                 die("Failed to move uploaded file.");
+            }
+        }
 
         if ($coupon_id) {
-            // Update - AND verify ownership by widget_id
-            $stmt = $pdo->prepare("UPDATE coupons SET title=?, description=?, coupon_code=?, button_text=?, bg_color=?, text_color=?, trigger_type=?, trigger_delay=?, frequency=?, match_url=?, active=? WHERE id=? AND widget_id=?");
-            $stmt->execute([$title, $description, $coupon_code, $button_text, $bg_color, $text_color, $trigger_type, $trigger_delay, $frequency, $match_url, $active, $coupon_id, $widget_id]);
+            // Check if we need to update image
+            $sql = "UPDATE coupons SET title=?, description=?, coupon_code=?, button_text=?, bg_color=?, text_color=?, trigger_type=?, trigger_delay=?, frequency=?, match_url=?, active=?, image_style=? ";
+            $params = [$title, $description, $coupon_code, $button_text, $bg_color, $text_color, $trigger_type, $trigger_delay, $frequency, $match_url, $active, $image_style];
+
+            if ($image_url) {
+                // Get old image to delete
+                $stmt = $pdo->prepare("SELECT image_url FROM coupons WHERE id = ? AND widget_id = ?");
+                $stmt->execute([$coupon_id, $widget_id]);
+                $old_img = $stmt->fetchColumn();
+                if ($old_img && file_exists(__DIR__ . '/../../public_html' . $old_img)) {
+                    unlink(__DIR__ . '/../../public_html' . $old_img);
+                }
+
+                $sql .= ", image_url=? ";
+                $params[] = $image_url;
+            }
+
+            $sql .= "WHERE id=? AND widget_id=?";
+            $params[] = $coupon_id;
+            $params[] = $widget_id;
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+
         } else {
             // Create
-            $stmt = $pdo->prepare("INSERT INTO coupons (widget_id, title, description, coupon_code, button_text, bg_color, text_color, trigger_type, trigger_delay, frequency, match_url, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$widget_id, $title, $description, $coupon_code, $button_text, $bg_color, $text_color, $trigger_type, $trigger_delay, $frequency, $match_url, $active]);
+            $stmt = $pdo->prepare("INSERT INTO coupons (widget_id, title, description, coupon_code, button_text, bg_color, text_color, trigger_type, trigger_delay, frequency, match_url, active, image_style, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$widget_id, $title, $description, $coupon_code, $button_text, $bg_color, $text_color, $trigger_type, $trigger_delay, $frequency, $match_url, $active, $image_style, $image_url]);
         }
 
         header("Location: /campaigns/coupon");
@@ -98,7 +149,16 @@ class CouponController {
         list($pdo, $user_id, $widget) = $this->getWidgetAndUser();
         $widget_id = $widget['id'];
 
-        // Secure delete: ensure the coupon belongs to the user's widget
+        // Get image to delete
+        $stmt = $pdo->prepare("SELECT image_url FROM coupons WHERE id = ? AND widget_id = ?");
+        $stmt->execute([$coupon_id, $widget_id]);
+        $img = $stmt->fetchColumn();
+
+        if ($img && file_exists(__DIR__ . '/../../public_html' . $img)) {
+            unlink(__DIR__ . '/../../public_html' . $img);
+        }
+
+        // Secure delete
         $stmt = $pdo->prepare("DELETE FROM coupons WHERE id = ? AND widget_id = ?");
         $stmt->execute([$coupon_id, $widget_id]);
 

@@ -229,6 +229,61 @@ class WidgetController {
         };
         content.appendChild(closeBtn);
 
+        // --- Image Layout Logic ---
+
+        if (coupon.image_url) {
+            const imgUrl = API_BASE.replace('/api', '') + coupon.image_url;
+            const style = coupon.image_style || 'top';
+
+            if (style === 'background') {
+                content.style.backgroundImage = `url('\${imgUrl}')`;
+                content.style.backgroundSize = 'cover';
+                content.style.backgroundPosition = 'center';
+                // Add overlay if text might be unreadable? For now, user's risk.
+            } else if (style === 'top') {
+                const img = document.createElement('img');
+                img.src = imgUrl;
+                img.style.cssText = 'width: 100%; height: 150px; object-fit: cover; border-radius: 8px 8px 0 0; margin-bottom: 20px; display: block; margin-left: -30px; margin-top: -30px; width: calc(100% + 60px);';
+                // Note: negative margins cancel out the padding to make it flush
+                content.insertBefore(img, closeBtn); // insert before content but after close? No, close is absolute.
+                // Re-append close btn to be on top? Z-index handles it.
+            } else if (style === 'left') {
+                // Adjust Content Layout to Row
+                content.style.display = 'flex';
+                content.style.flexDirection = 'row';
+                content.style.maxWidth = '700px';
+                content.style.padding = '0'; // Remove padding from main container
+                content.style.overflow = 'hidden';
+
+                const leftPane = document.createElement('div');
+                leftPane.style.cssText = `
+                    flex: 1; background-image: url('\${imgUrl}');
+                    background-size: cover; background-position: center;
+                    min-height: 300px;
+                `;
+
+                const rightPane = document.createElement('div');
+                rightPane.style.cssText = 'flex: 1; padding: 30px; display: flex; flex-direction: column; justify-content: center;';
+
+                // Move existing elements to right pane
+                // We haven't appended them yet to 'content', we are about to.
+                // So we'll append to rightPane instead.
+
+                // Hack: Override appendChild for this scope or just append to rightPane
+                const originalAppend = content.appendChild.bind(content);
+                content.appendChild = (el) => {
+                    if (el === closeBtn || el === leftPane || el === rightPane) {
+                        originalAppend(el);
+                    } else {
+                        rightPane.appendChild(el);
+                    }
+                };
+
+                originalAppend(leftPane);
+                originalAppend(rightPane);
+            }
+        }
+
         // Title
         const title = document.createElement('h2');
         title.textContent = coupon.title;

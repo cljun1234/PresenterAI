@@ -109,7 +109,7 @@ input:checked + .slider:before { transform: translateX(24px); }
         <span class="close" onclick="closeModal()">&times;</span>
         <h2 id="modalTitle">Create Coupon</h2>
 
-        <form action="/campaigns/coupon/save" method="POST">
+        <form action="/campaigns/coupon/save" method="POST" enctype="multipart/form-data">
             <input type="hidden" name="coupon_id" id="coupon_id">
 
             <div class="form-row">
@@ -139,6 +139,24 @@ input:checked + .slider:before { transform: translateX(24px); }
                         <input type="color" name="bg_color" id="bg_color" value="#ffffff" style="height: 38px; padding: 2px;">
                         <input type="color" name="text_color" id="text_color" value="#333333" style="height: 38px; padding: 2px;">
                     </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-col">
+                    <label>Banner Image (Max 15MB)</label>
+                    <input type="file" name="image_upload" id="image_upload" accept="image/*">
+                    <div id="current_image_display" style="margin-top: 5px; font-size: 0.8rem; color: #666; display: none;">
+                        Current: <a href="#" target="_blank" id="current_image_link">View</a>
+                    </div>
+                </div>
+                <div class="form-col">
+                    <label>Banner Position</label>
+                    <select name="image_style" id="image_style" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="top">Top</option>
+                        <option value="left">Left (Split)</option>
+                        <option value="background">Background</option>
+                    </select>
                 </div>
             </div>
 
@@ -202,8 +220,12 @@ input:checked + .slider:before { transform: translateX(24px); }
         trigger_delay: document.getElementById("trigger_delay"),
         frequency: document.getElementById("frequency"),
         match_url: document.getElementById("match_url"),
-        active: document.getElementById("active")
+        active: document.getElementById("active"),
+        image_style: document.getElementById("image_style")
     };
+
+    const currentImageDisplay = document.getElementById("current_image_display");
+    const currentImageLink = document.getElementById("current_image_link");
 
     function openModal() {
         modal.style.display = "block";
@@ -234,6 +256,9 @@ input:checked + .slider:before { transform: translateX(24px); }
         formInputs.frequency.value = "every_load";
         formInputs.match_url.value = "";
         formInputs.active.checked = true;
+        formInputs.image_style.value = "top";
+        currentImageDisplay.style.display = "none";
+        document.getElementById("image_upload").value = "";
     }
 
     function editCoupon(data) {
@@ -250,6 +275,15 @@ input:checked + .slider:before { transform: translateX(24px); }
         formInputs.frequency.value = data.frequency;
         formInputs.match_url.value = data.match_url || "";
         formInputs.active.checked = data.active == 1;
+        formInputs.image_style.value = data.image_style || "top";
+
+        if (data.image_url) {
+            currentImageDisplay.style.display = "block";
+            currentImageLink.href = data.image_url;
+        } else {
+            currentImageDisplay.style.display = "none";
+        }
+        document.getElementById("image_upload").value = "";
 
         modal.style.display = "block";
     }

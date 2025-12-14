@@ -88,6 +88,8 @@ CREATE TABLE IF NOT EXISTS coupons (
     match_url VARCHAR(255) DEFAULT NULL, -- URL pattern to match, NULL = all
     active BOOLEAN DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    image_url VARCHAR(255) DEFAULT NULL,
+    image_style VARCHAR(50) DEFAULT 'top', -- 'top', 'left', 'background'
     FOREIGN KEY (widget_id) REFERENCES widgets(id) ON DELETE CASCADE
 );
 
