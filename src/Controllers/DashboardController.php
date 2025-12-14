@@ -27,14 +27,40 @@ class DashboardController {
     public function index() {
         list($pdo, $user_id, $widget) = $this->getWidgetAndUser();
 
-        // Count live visitors (Active in last 5 mins)
-        // Adjust date logic for PHP/MySQL compatibility
-        $cutoff = date('Y-m-d H:i:s', strtotime('-5 minutes'));
+        // 1. Current Live Count (Active in last 30 mins)
+        // This matches the WidgetController logic
+        $cutoff = date('Y-m-d H:i:s', strtotime('-30 minutes'));
         $stmt = $pdo->prepare("SELECT COUNT(DISTINCT visitor_id) as count FROM live_visitors WHERE widget_id = ? AND last_seen > ?");
         $stmt->execute([$widget['id'], $cutoff]);
-        $live_count = $stmt->fetch()['count'];
+        $current_live = $stmt->fetch()['count'];
 
-        // require_once __DIR__ . '/../../views/dashboard.php';
+        // 2. Historical Graph Data (Last 24 hours)
+        // Fetch raw data
+        $stmt = $pdo->prepare("SELECT visitor_count, created_at FROM traffic_snapshots WHERE widget_id = ? AND created_at > (NOW() - INTERVAL 24 HOUR) ORDER BY created_at ASC");
+        $stmt->execute([$widget['id']]);
+        $raw_data = $stmt->fetchAll();
+
+        // Process data to fill gaps and create hourly peaks
+        // We want a full 24-hour range on the chart
+        $hourly_buckets = [];
+        for ($i = 23; $i >= 0; $i--) {
+             // Create label like '15:00'
+             $h = date('H:00', strtotime("-$i hour"));
+             $hourly_buckets[$h] = 0;
+        }
+
+        foreach ($raw_data as $row) {
+            // Map the timestamp to its hour bucket
+            $h = date('H:00', strtotime($row['created_at']));
+            if (isset($hourly_buckets[$h])) {
+                // Use the max visitor count recorded in that hour
+                $hourly_buckets[$h] = max($hourly_buckets[$h], $row['visitor_count']);
+            }
+        }
+
+        $labels = array_keys($hourly_buckets);
+        $counts = array_values($hourly_buckets);
+
         require_once __DIR__ . '/../../views/pages/home.php';
     }
 
@@ -59,18 +85,6 @@ class DashboardController {
 
             require_once __DIR__ . '/../../views/campaigns/live_conversion.php';
         } elseif ($type === 'live-visitors') {
-
-            // Current Live Count (Last 30 mins)
-            $cutoff = date('Y-m-d H:i:s', strtotime('-30 minutes'));
-            $stmt = $pdo->prepare("SELECT COUNT(DISTINCT visitor_id) as count FROM live_visitors WHERE widget_id = ? AND last_seen > ?");
-            $stmt->execute([$widget['id'], $cutoff]);
-            $current_live = $stmt->fetch()['count'];
-
-            // Historical Graph Data (Traffic Snapshots)
-            // Fetch last 24 hours (or limit to last N points)
-            $stmt = $pdo->prepare("SELECT visitor_count, created_at FROM traffic_snapshots WHERE widget_id = ? ORDER BY created_at DESC LIMIT 288"); // 288 * 5 mins = 24 hours
-            $stmt->execute([$widget['id']]);
-            $graph_data = array_reverse($stmt->fetchAll()); // Oldest first for graph
 
             // Config
             $config = [
@@ -101,15 +115,15 @@ class DashboardController {
        $stmt->execute([$widget_id, $user_id]);
        if (!$stmt->fetch()) { die("Unauthorized"); }
 
-       $enabled = isset($_POST['enabled']) ? 1 : 0;
+       // We only save config here (AJAX handles enabled toggle)
        $config = [
            'position' => $_POST['position'] ?? 'bottom-left',
            'bg_color' => $_POST['bg_color'] ?? '#ffffff',
            'text_color' => $_POST['text_color'] ?? '#333333'
        ];
 
-       $stmt = $pdo->prepare("UPDATE widgets SET live_visitor_enabled = ?, live_visitor_config = ? WHERE id = ?");
-       $stmt->execute([$enabled, json_encode($config), $widget_id]);
+       $stmt = $pdo->prepare("UPDATE widgets SET live_visitor_config = ? WHERE id = ?");
+       $stmt->execute([json_encode($config), $widget_id]);
 
        header('Location: /campaigns/live-visitors');
     }
