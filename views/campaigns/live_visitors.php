@@ -12,20 +12,57 @@ $labels = array_map(function($d) { return date('H:i', strtotime($d['created_at']
 $counts = array_map(function($d) { return $d['visitor_count']; }, $graph_data);
 ?>
 
+<style>
+/* Switch Toggle CSS */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
+}
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 34px;
+}
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px; bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+input:checked + .slider { background-color: var(--primary-color); }
+input:focus + .slider { box-shadow: 0 0 1px var(--primary-color); }
+input:checked + .slider:before { transform: translateX(24px); }
+.form-group.toggle { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.form-group.toggle label { margin-bottom: 0; }
+</style>
+
 <div class="row" style="display: flex; gap: 20px;">
     <!-- Left Column: Config -->
     <div style="flex: 1; min-width: 300px;">
         <div class="card">
             <h2>Configuration</h2>
+
+            <div class="form-group toggle">
+                <label>Enable Live Visitor Widget</label>
+                <label class="switch">
+                    <input type="checkbox" onchange="toggleFeature('live_visitor', this.checked)" <?php echo $config['enabled'] ? 'checked' : ''; ?>>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
             <form action="/save-live-visitor-config" method="POST">
                 <input type="hidden" name="widget_id" value="<?php echo $widget['id']; ?>">
-
-                <div class="form-group toggle">
-                    <label>
-                        <input type="checkbox" name="enabled" <?php echo $config['enabled'] ? 'checked' : ''; ?>>
-                        Enable Live Visitor Widget
-                    </label>
-                </div>
+                <!-- Hidden input to maintain legacy form structure if needed, but AJAX handles the toggle above -->
 
                 <div class="form-group">
                     <label>Position</label>
@@ -45,7 +82,7 @@ $counts = array_map(function($d) { return $d['visitor_count']; }, $graph_data);
                     <input type="color" name="text_color" value="<?php echo htmlspecialchars($txt); ?>" style="width: 100%; height: 40px;">
                 </div>
 
-                <button type="submit" class="btn">Save Changes</button>
+                <button type="submit" class="btn">Save Appearance</button>
             </form>
         </div>
 
@@ -65,6 +102,10 @@ $counts = array_map(function($d) { return $d['visitor_count']; }, $graph_data);
             <canvas id="visitorChart" style="width: 100%; height: 300px;"></canvas>
         </div>
     </div>
+</div>
+
+<div id="toast" style="visibility: hidden; min-width: 250px; margin-left: -125px; background-color: #333; color: #fff; text-align: center; border-radius: 2px; padding: 16px; position: fixed; z-index: 1; left: 50%; bottom: 30px; font-size: 17px;">
+  Setting updated successfully!
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -93,6 +134,37 @@ $counts = array_map(function($d) { return $d['visitor_count']; }, $graph_data);
             }
         }
     });
+
+    const WIDGET_ID = <?php echo json_encode($widget['id']); ?>;
+
+    async function toggleFeature(featureName, isEnabled) {
+        try {
+            const response = await fetch('/api/toggle-feature', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    feature: featureName,
+                    enabled: isEnabled,
+                    widget_id: WIDGET_ID
+                })
+            });
+            const json = await response.json();
+            if (json.success) {
+                showToast();
+            } else {
+                alert('Failed to update setting.');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Error updating setting.');
+        }
+    }
+
+    function showToast() {
+      var x = document.getElementById("toast");
+      x.style.visibility = "visible";
+      setTimeout(function(){ x.style.visibility = "hidden"; }, 3000);
+    }
 </script>
 
 <?php require_once __DIR__ . '/../layouts/footer.php'; ?>

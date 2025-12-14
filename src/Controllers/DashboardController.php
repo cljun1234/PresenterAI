@@ -47,10 +47,15 @@ class DashboardController {
         list($pdo, $user_id, $widget) = $this->getWidgetAndUser();
 
         if ($type === 'live-conversion') {
-            // Fetch notifications
+            // Fetch notifications (Simulated)
             $stmt = $pdo->prepare("SELECT * FROM notifications WHERE widget_id = ? ORDER BY created_at DESC");
             $stmt->execute([$widget['id']]);
             $notifications = $stmt->fetchAll();
+
+            // Fetch Real Events (Form Submits)
+            $stmt = $pdo->prepare("SELECT * FROM events WHERE widget_id = ? AND type='form_submit' ORDER BY created_at DESC LIMIT 50");
+            $stmt->execute([$widget['id']]);
+            $real_events = $stmt->fetchAll();
 
             require_once __DIR__ . '/../../views/campaigns/live_conversion.php';
         } elseif ($type === 'live-visitors') {
@@ -109,6 +114,46 @@ class DashboardController {
        header('Location: /campaigns/live-visitors');
     }
 
+    public function toggleFeature() {
+        if (!isset($_SESSION['user_id'])) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Unauthorized']);
+            exit;
+        }
+
+        $pdo = Database::getInstance();
+        $user_id = $_SESSION['user_id'];
+
+        // Parse JSON input
+        $input = json_decode(file_get_contents('php://input'), true);
+        $feature = $input['feature'] ?? '';
+        $enabled = !empty($input['enabled']); // boolean true/false
+        $widget_id = $input['widget_id'] ?? 0;
+
+        // Map feature name to column name
+        $column = '';
+        if ($feature === 'live_visitor') $column = 'live_visitor_enabled';
+        elseif ($feature === 'live_conversion') $column = 'live_conversion_enabled';
+        elseif ($feature === 'magical_detection') $column = 'magical_detection';
+        elseif ($feature === 'use_real_conversion') $column = 'use_real_conversion';
+        elseif ($feature === 'use_simulated_conversion') $column = 'use_simulated_conversion';
+
+        if (!$column) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid feature']);
+            exit;
+        }
+
+        // Update
+        // Ensure the widget belongs to the user
+        $stmt = $pdo->prepare("UPDATE widgets SET $column = ? WHERE id = ? AND user_id = ?");
+        $stmt->execute([$enabled ? 1 : 0, $widget_id, $user_id]);
+
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true, 'feature' => $feature, 'enabled' => $enabled]);
+        exit;
+    }
+
     public function saveConfig() {
          if (!isset($_SESSION['user_id'])) {
             header('Location: /login');
@@ -163,6 +208,22 @@ class DashboardController {
 
         // Verify ownership via widget
         $stmt = $pdo->prepare("DELETE n FROM notifications n JOIN widgets w ON n.widget_id = w.id WHERE n.id = ? AND w.user_id = ?");
+        $stmt->execute([$id, $user_id]);
+
+        header('Location: /campaigns/live-conversion');
+    }
+
+    public function deleteEvent($id) {
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: /login');
+            exit;
+        }
+
+        $pdo = Database::getInstance();
+        $user_id = $_SESSION['user_id'];
+
+        // Verify ownership via widget join
+        $stmt = $pdo->prepare("DELETE e FROM events e JOIN widgets w ON e.widget_id = w.id WHERE e.id = ? AND w.user_id = ?");
         $stmt->execute([$id, $user_id]);
 
         header('Location: /campaigns/live-conversion');

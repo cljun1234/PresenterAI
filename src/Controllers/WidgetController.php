@@ -285,27 +285,40 @@ JS;
         $stmt->execute([$widget_id]);
         $historical_count = $stmt->fetch()['count'];
 
-        // 3. Simulated Data
-        $stmt = $pdo->prepare("SELECT name, action_text as actionText, location, image_url FROM notifications WHERE widget_id = ? AND active = 1");
-        $stmt->execute([$widget_id]);
-        $simulated = $stmt->fetchAll();
-        foreach ($simulated as &$s) { $s['is_real'] = false; }
+        $notifications = [];
 
-        // 4. Real Data
-        $stmt = $pdo->prepare("SELECT * FROM events WHERE widget_id = ? AND type='form_submit' ORDER BY created_at DESC LIMIT 5");
-        $stmt->execute([$widget_id]);
-        $real_events = $stmt->fetchAll();
+        // Check if Live Conversion is enabled
+        $live_conversion_enabled = (bool)($widget['live_conversion_enabled'] ?? false);
+        $use_real = (bool)($widget['use_real_conversion'] ?? true);
+        $use_simulated = (bool)($widget['use_simulated_conversion'] ?? true);
 
-        $real = [];
-        foreach ($real_events as $ev) {
-            $real[] = [
-                'name' => 'A visitor',
-                'actionText' => 'Just signed up',
-                'is_real' => true
-            ];
+        if ($live_conversion_enabled) {
+            // 3. Simulated Data
+            if ($use_simulated) {
+                $stmt = $pdo->prepare("SELECT name, action_text as actionText, location, image_url FROM notifications WHERE widget_id = ? AND active = 1");
+                $stmt->execute([$widget_id]);
+                $simulated = $stmt->fetchAll();
+                foreach ($simulated as &$s) { $s['is_real'] = false; }
+                $notifications = array_merge($notifications, $simulated);
+            }
+
+            // 4. Real Data
+            if ($use_real) {
+                $stmt = $pdo->prepare("SELECT * FROM events WHERE widget_id = ? AND type='form_submit' ORDER BY created_at DESC LIMIT 5");
+                $stmt->execute([$widget_id]);
+                $real_events = $stmt->fetchAll();
+
+                $real = [];
+                foreach ($real_events as $ev) {
+                    $real[] = [
+                        'name' => 'A visitor',
+                        'actionText' => 'Just signed up',
+                        'is_real' => true
+                    ];
+                }
+                $notifications = array_merge($notifications, $real);
+            }
         }
-
-        $notifications = array_merge($real, $simulated);
 
         $live_config = json_decode($widget['live_visitor_config'] ?? '{}', true);
 

@@ -26,8 +26,12 @@ $router->map('GET', '/settings', 'DashboardController#settings', 'settings');
 $router->map('GET', '/campaigns/[*:type]', 'DashboardController#campaigns', 'campaigns');
 
 $router->map('POST', '/widget/save', 'DashboardController#saveConfig', 'save_config');
+$router->map('POST', '/save-live-visitor-config', 'DashboardController#saveLiveVisitorConfig', 'save_live_visitor');
+$router->map('POST', '/api/toggle-feature', 'DashboardController#toggleFeature', 'api_toggle_feature');
+
 $router->map('POST', '/notification/add', 'DashboardController#addNotification', 'add_notification');
 $router->map('GET', '/notification/delete/[i:id]', 'DashboardController#deleteNotification', 'delete_notification');
+$router->map('GET', '/event/delete/[i:id]', 'DashboardController#deleteEvent', 'delete_event');
 
 // API / Widget
 $router->map('GET', '/api/widget.js', 'WidgetController#serveScript', 'widget_js');
