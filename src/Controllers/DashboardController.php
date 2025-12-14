@@ -112,6 +112,19 @@ class DashboardController {
             ];
 
             require_once __DIR__ . '/../../views/campaigns/live_visitors.php';
+        } elseif ($type === 'coupon') {
+             // Delegate to CouponController or handle here?
+             // Since I created CouponController::index, I should forward it.
+             // But existing routing calls DashboardController#campaigns for /campaigns/[type]
+
+             // I'll instantiate the specific controller logic here or redirect logic.
+             // Given the architecture, I'll call the CouponController manually here.
+             require_once __DIR__ . '/CouponController.php';
+             $cc = new CouponController();
+             $cc->index($widget['id']);
+             // The CouponController::index loads the view and exits?
+             // No, it requires the view. So we are good.
+
         } else {
             // Generic placeholder
             $campaignType = $type;

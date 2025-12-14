@@ -22,8 +22,10 @@ class WidgetController {
     const DISPLAY_DURATION_MS = 5000;
     const HIDE_DURATION_MS = 5000;
     const CONTAINER_ID = 'trustabee-widget';
+    const COUPON_CONTAINER_ID = 'trustabee-coupon-modal';
 
     let data = [];
+    let coupons = [];
     let currentIndex = 0;
     let widgetElement;
     let timerId;
@@ -34,6 +36,12 @@ class WidgetController {
         try {
             const response = await fetch(`\${API_BASE}/data?w=\${WIDGET_ID}`);
             const json = await response.json();
+
+            // Store coupons
+            if (json.coupons && json.coupons.length > 0) {
+                coupons = json.coupons;
+                checkCoupons();
+            }
 
             // Build queue
             data = [];
@@ -111,6 +119,170 @@ class WidgetController {
         } else {
             fetch(`\${API_BASE}/track`, { method: 'POST', body: payload });
         }
+    }
+
+    function trackCouponEvent(couponId, eventType) {
+        const payload = new URLSearchParams();
+        payload.append('w', WIDGET_ID);
+        payload.append('cid', couponId);
+        payload.append('type', eventType);
+
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon(`\${API_BASE}/track-coupon`, payload);
+        } else {
+            fetch(`\${API_BASE}/track-coupon`, { method: 'POST', body: payload });
+        }
+    }
+
+    // --- Coupon Logic ---
+
+    function checkCoupons() {
+        // Iterate through coupons and find the first match
+        for (const coupon of coupons) {
+            if (shouldShowCoupon(coupon)) {
+                // Initialize Trigger
+                if (coupon.trigger_type === 'exit_intent') {
+                    setupExitIntent(coupon);
+                } else {
+                    // Default to delay
+                    setTimeout(() => showCoupon(coupon), (coupon.trigger_delay || 0) * 1000);
+                }
+                return; // Only show one coupon per page load
+            }
+        }
+    }
+
+    function shouldShowCoupon(coupon) {
+        // 1. URL Match
+        if (coupon.match_url && coupon.match_url.trim() !== '') {
+            if (!window.location.href.includes(coupon.match_url)) {
+                return false;
+            }
+        }
+
+        // 2. Frequency
+        const storageKey = `trustabee_coupon_shown_\${coupon.id}`;
+        const lastShown = localStorage.getItem(storageKey);
+
+        if (coupon.frequency === 'session') {
+            // Check if shown in last 30 mins
+            if (lastShown) {
+                const now = new Date().getTime();
+                const diffMinutes = (now - parseInt(lastShown)) / 1000 / 60;
+                if (diffMinutes < 30) return false;
+            }
+        }
+        // 'every_load' just passes through
+
+        return true;
+    }
+
+    function setupExitIntent(coupon) {
+        const handler = (e) => {
+            if (e.clientY <= 0) {
+                document.removeEventListener('mouseleave', handler);
+                showCoupon(coupon);
+            }
+        };
+        document.addEventListener('mouseleave', handler);
+    }
+
+    function showCoupon(coupon) {
+        // Re-check frequency just in case (e.g. race condition or multiple tabs?)
+        // But mainly we need to set the storage key now
+        const storageKey = `trustabee_coupon_shown_\${coupon.id}`;
+        localStorage.setItem(storageKey, new Date().getTime());
+
+        // Create Modal
+        if (document.getElementById(COUPON_CONTAINER_ID)) return;
+
+        const modal = document.createElement('div');
+        modal.id = COUPON_CONTAINER_ID;
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 10000;
+            display: flex; align-items: center; justify-content: center;
+            font-family: sans-serif; opacity: 0; transition: opacity 0.3s;
+        `;
+
+        const content = document.createElement('div');
+        content.style.cssText = `
+            background: \${coupon.bg_color || '#fff'};
+            color: \${coupon.text_color || '#333'};
+            padding: 30px; border-radius: 12px;
+            width: 90%; max-width: 450px;
+            text-align: center; position: relative;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            transform: scale(0.9); transition: transform 0.3s;
+        `;
+
+        // Close Button
+        const closeBtn = document.createElement('div');
+        closeBtn.innerHTML = '&times;';
+        closeBtn.style.cssText = `
+            position: absolute; top: 10px; right: 15px;
+            font-size: 24px; cursor: pointer; opacity: 0.6;
+        `;
+        closeBtn.onclick = () => {
+            modal.style.opacity = '0';
+            setTimeout(() => modal.remove(), 300);
+        };
+        content.appendChild(closeBtn);
+
+        // Title
+        const title = document.createElement('h2');
+        title.textContent = coupon.title;
+        title.style.margin = '0 0 10px 0';
+        content.appendChild(title);
+
+        // Description
+        if (coupon.description) {
+            const desc = document.createElement('p');
+            desc.textContent = coupon.description;
+            desc.style.cssText = 'margin: 0 0 20px 0; font-size: 16px; opacity: 0.9;';
+            content.appendChild(desc);
+        }
+
+        // Coupon Code Box (Dashed border per design)
+        const codeBox = document.createElement('div');
+        codeBox.style.cssText = `
+            border: 2px dashed #ccc; padding: 15px;
+            margin: 0 0 20px 0; border-radius: 6px;
+            font-size: 20px; font-weight: bold;
+            background: rgba(0,0,0,0.03); letter-spacing: 1px;
+        `;
+        codeBox.textContent = coupon.coupon_code;
+        content.appendChild(codeBox);
+
+        // Button
+        const btn = document.createElement('button');
+        btn.textContent = coupon.button_text || 'Copy Code';
+        btn.style.cssText = `
+            background: #1a73e8; color: white; border: none;
+            padding: 12px 24px; font-size: 16px; border-radius: 6px;
+            cursor: pointer; width: 100%; font-weight: 600;
+        `;
+        btn.onclick = () => {
+            navigator.clipboard.writeText(coupon.coupon_code).then(() => {
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                trackCouponEvent(coupon.id, 'click');
+                setTimeout(() => btn.textContent = originalText, 2000);
+            });
+        };
+        content.appendChild(btn);
+
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+
+        // Animate in
+        requestAnimationFrame(() => {
+            modal.style.opacity = '1';
+            content.style.transform = 'scale(1)';
+        });
+
+        // Track View
+        trackCouponEvent(coupon.id, 'view');
     }
 
     // --- Widget Logic ---
@@ -275,6 +447,11 @@ JS;
         // Lazy Logging: Check if we need to take a snapshot
         $this->logTrafficSnapshot($widget_id, $pdo);
 
+        // Fetch active coupons
+        $stmt = $pdo->prepare("SELECT * FROM coupons WHERE widget_id = ? AND active = 1");
+        $stmt->execute([$widget_id]);
+        $coupons = $stmt->fetchAll();
+
         // 1. Live Visitors (Active in last 30 minutes, distinct)
         $stmt = $pdo->prepare("SELECT COUNT(DISTINCT visitor_id) as count FROM live_visitors WHERE widget_id = ? AND last_seen > (NOW() - INTERVAL 30 MINUTE)");
         $stmt->execute([$widget_id]);
@@ -328,6 +505,7 @@ JS;
                 'live_visitor_enabled' => (bool)($widget['live_visitor_enabled'] ?? false),
                 'live_visitor_config' => $live_config
             ],
+            'coupons' => $coupons,
             'live_count' => $live_count,
             'historical_count' => $historical_count,
             'notifications' => $notifications
@@ -388,6 +566,19 @@ JS;
         $pdo = Database::getInstance();
         $stmt = $pdo->prepare("INSERT INTO events (widget_id, type, payload, visitor_id, page_url) VALUES (?, ?, ?, ?, ?)");
         $stmt->execute([$widget_id, $type, $payload, $visitor_id, $page]);
+    }
+
+    public function trackCoupon() {
+        $this->addCors();
+        $widget_id = $_POST['w'] ?? 0;
+        $coupon_id = $_POST['cid'] ?? 0;
+        $type = $_POST['type'] ?? 'unknown';
+
+        if (!$widget_id || !$coupon_id) return;
+
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare("INSERT INTO coupon_analytics (coupon_id, event_type, created_at) VALUES (?, ?, NOW())");
+        $stmt->execute([$coupon_id, $type]);
     }
 
     private function addCors() {
