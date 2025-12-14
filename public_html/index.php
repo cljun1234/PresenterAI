@@ -37,12 +37,17 @@ $router->map('GET', '/event/delete/[i:id]', 'DashboardController#deleteEvent', '
 $router->map('POST', '/campaigns/coupon/save', 'CouponController#save', 'coupon_save');
 $router->map('GET', '/campaigns/coupon/delete/[i:id]', 'CouponController#delete', 'coupon_delete');
 
+// Announcements
+$router->map('POST', '/campaigns/announcement/save', 'AnnouncementController#save', 'announcement_save');
+$router->map('GET', '/campaigns/announcement/delete/[i:id]', 'AnnouncementController#delete', 'announcement_delete');
+
 // API / Widget
 $router->map('GET', '/api/widget.js', 'WidgetController#serveScript', 'widget_js');
 $router->map('GET', '/api/data', 'WidgetController#getData', 'widget_data');
 $router->map('POST', '/api/heartbeat', 'WidgetController#heartbeat', 'widget_heartbeat');
 $router->map('POST', '/api/track', 'WidgetController#trackEvent', 'widget_track');
 $router->map('POST', '/api/track-coupon', 'WidgetController#trackCoupon', 'widget_track_coupon');
+$router->map('POST', '/api/track-announcement', 'WidgetController#trackAnnouncement', 'widget_track_announcement');
 
 // Match request
 $match = $router->match();

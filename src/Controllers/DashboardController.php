@@ -125,6 +125,11 @@ class DashboardController {
              // The CouponController::index loads the view and exits?
              // No, it requires the view. So we are good.
 
+        } elseif ($type === 'announcement') {
+             require_once __DIR__ . '/AnnouncementController.php';
+             $ac = new AnnouncementController();
+             $ac->index($widget['id']);
+
         } else {
             // Generic placeholder
             $campaignType = $type;

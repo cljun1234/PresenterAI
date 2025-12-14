@@ -1,6 +1,6 @@
 <?php
 
-class CouponController {
+class AnnouncementController {
 
     private function getWidgetAndUser() {
         if (session_status() === PHP_SESSION_NONE) {
@@ -39,23 +39,23 @@ class CouponController {
              $widget = $stmt->fetch();
         }
 
-        // Fetch Coupons
-        $stmt = $pdo->prepare("SELECT * FROM coupons WHERE widget_id = ? ORDER BY created_at DESC");
+        // Fetch Announcements
+        $stmt = $pdo->prepare("SELECT * FROM announcements WHERE widget_id = ? ORDER BY created_at DESC");
         $stmt->execute([$widget_id]);
-        $coupons = $stmt->fetchAll();
+        $announcements = $stmt->fetchAll();
 
         // Analytics
-        foreach ($coupons as &$coupon) {
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM coupon_analytics WHERE coupon_id = ? AND event_type = 'view'");
-            $stmt->execute([$coupon['id']]);
-            $coupon['views'] = $stmt->fetchColumn();
+        foreach ($announcements as &$announcement) {
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM announcement_analytics WHERE announcement_id = ? AND event_type = 'view'");
+            $stmt->execute([$announcement['id']]);
+            $announcement['views'] = $stmt->fetchColumn();
 
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM coupon_analytics WHERE coupon_id = ? AND event_type = 'click'");
-            $stmt->execute([$coupon['id']]);
-            $coupon['clicks'] = $stmt->fetchColumn();
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM announcement_analytics WHERE announcement_id = ? AND event_type = 'click'");
+            $stmt->execute([$announcement['id']]);
+            $announcement['clicks'] = $stmt->fetchColumn();
         }
 
-        require_once __DIR__ . '/../../views/campaigns/coupon.php';
+        require_once __DIR__ . '/../../views/campaigns/announcement.php';
     }
 
     public function save() {
@@ -63,9 +63,10 @@ class CouponController {
         $widget_id = $widget['id'];
 
         $title = $_POST['title'];
-        $description = $_POST['description'];
-        $coupon_code = $_POST['coupon_code'];
-        $button_text = $_POST['button_text'];
+        $message = $_POST['message'];
+        $btn_text = $_POST['btn_text'];
+        $btn_action = $_POST['btn_action'] ?? 'link';
+        $btn_link = $_POST['btn_link'] ?? '';
         $bg_color = $_POST['bg_color'];
         $text_color = $_POST['text_color'];
         $trigger_type = $_POST['trigger_type'];
@@ -76,7 +77,7 @@ class CouponController {
         $image_style = $_POST['image_style'] ?? 'top';
         $remove_branding = isset($_POST['remove_branding']) ? 1 : 0;
 
-        $coupon_id = $_POST['coupon_id'] ?? null;
+        $announcement_id = $_POST['announcement_id'] ?? null;
         $image_url = null;
 
         // Handle File Upload
@@ -96,30 +97,30 @@ class CouponController {
             }
 
             // Ensure directory exists
-            $upload_dir = __DIR__ . '/../../public_html/uploads/coupons/';
+            $upload_dir = __DIR__ . '/../../public_html/uploads/announcements/';
             if (!file_exists($upload_dir)) {
                 mkdir($upload_dir, 0755, true);
             }
 
-            $filename = uniqid('banner_') . '.' . $ext;
+            $filename = uniqid('announcement_') . '.' . $ext;
             $upload_path = $upload_dir . $filename;
 
             if (move_uploaded_file($file['tmp_name'], $upload_path)) {
-                $image_url = '/uploads/coupons/' . $filename;
+                $image_url = '/uploads/announcements/' . $filename;
             } else {
                  die("Failed to move uploaded file.");
             }
         }
 
-        if ($coupon_id) {
+        if ($announcement_id) {
             // Check if we need to update image
-            $sql = "UPDATE coupons SET title=?, description=?, coupon_code=?, button_text=?, bg_color=?, text_color=?, trigger_type=?, trigger_delay=?, frequency=?, match_url=?, active=?, image_style=?, remove_branding=? ";
-            $params = [$title, $description, $coupon_code, $button_text, $bg_color, $text_color, $trigger_type, $trigger_delay, $frequency, $match_url, $active, $image_style, $remove_branding];
+            $sql = "UPDATE announcements SET title=?, message=?, btn_text=?, btn_action=?, btn_link=?, bg_color=?, text_color=?, trigger_type=?, trigger_delay=?, frequency=?, match_url=?, active=?, image_style=?, remove_branding=? ";
+            $params = [$title, $message, $btn_text, $btn_action, $btn_link, $bg_color, $text_color, $trigger_type, $trigger_delay, $frequency, $match_url, $active, $image_style, $remove_branding];
 
             if ($image_url) {
                 // Get old image to delete
-                $stmt = $pdo->prepare("SELECT image_url FROM coupons WHERE id = ? AND widget_id = ?");
-                $stmt->execute([$coupon_id, $widget_id]);
+                $stmt = $pdo->prepare("SELECT image_url FROM announcements WHERE id = ? AND widget_id = ?");
+                $stmt->execute([$announcement_id, $widget_id]);
                 $old_img = $stmt->fetchColumn();
                 if ($old_img && file_exists(__DIR__ . '/../../public_html' . $old_img)) {
                     unlink(__DIR__ . '/../../public_html' . $old_img);
@@ -130,7 +131,7 @@ class CouponController {
             }
 
             $sql .= "WHERE id=? AND widget_id=?";
-            $params[] = $coupon_id;
+            $params[] = $announcement_id;
             $params[] = $widget_id;
 
             $stmt = $pdo->prepare($sql);
@@ -138,21 +139,21 @@ class CouponController {
 
         } else {
             // Create
-            $stmt = $pdo->prepare("INSERT INTO coupons (widget_id, title, description, coupon_code, button_text, bg_color, text_color, trigger_type, trigger_delay, frequency, match_url, active, image_style, remove_branding, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$widget_id, $title, $description, $coupon_code, $button_text, $bg_color, $text_color, $trigger_type, $trigger_delay, $frequency, $match_url, $active, $image_style, $remove_branding, $image_url]);
+            $stmt = $pdo->prepare("INSERT INTO announcements (widget_id, title, message, btn_text, btn_action, btn_link, bg_color, text_color, trigger_type, trigger_delay, frequency, match_url, active, image_style, remove_branding, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$widget_id, $title, $message, $btn_text, $btn_action, $btn_link, $bg_color, $text_color, $trigger_type, $trigger_delay, $frequency, $match_url, $active, $image_style, $remove_branding, $image_url]);
         }
 
-        header("Location: /campaigns/coupon");
+        header("Location: /campaigns/announcement");
         exit;
     }
 
-    public function delete($coupon_id) {
+    public function delete($announcement_id) {
         list($pdo, $user_id, $widget) = $this->getWidgetAndUser();
         $widget_id = $widget['id'];
 
         // Get image to delete
-        $stmt = $pdo->prepare("SELECT image_url FROM coupons WHERE id = ? AND widget_id = ?");
-        $stmt->execute([$coupon_id, $widget_id]);
+        $stmt = $pdo->prepare("SELECT image_url FROM announcements WHERE id = ? AND widget_id = ?");
+        $stmt->execute([$announcement_id, $widget_id]);
         $img = $stmt->fetchColumn();
 
         if ($img && file_exists(__DIR__ . '/../../public_html' . $img)) {
@@ -160,10 +161,10 @@ class CouponController {
         }
 
         // Secure delete
-        $stmt = $pdo->prepare("DELETE FROM coupons WHERE id = ? AND widget_id = ?");
-        $stmt->execute([$coupon_id, $widget_id]);
+        $stmt = $pdo->prepare("DELETE FROM announcements WHERE id = ? AND widget_id = ?");
+        $stmt->execute([$announcement_id, $widget_id]);
 
-        header("Location: /campaigns/coupon");
+        header("Location: /campaigns/announcement");
         exit;
     }
 }

@@ -23,9 +23,11 @@ class WidgetController {
     const HIDE_DURATION_MS = 5000;
     const CONTAINER_ID = 'trustabee-widget';
     const COUPON_CONTAINER_ID = 'trustabee-coupon-modal';
+    const ANNOUNCEMENT_CONTAINER_ID = 'trustabee-announcement-modal';
 
     let data = [];
     let coupons = [];
+    let announcements = [];
     let currentIndex = 0;
     let widgetElement;
     let timerId;
@@ -41,6 +43,12 @@ class WidgetController {
             if (json.coupons && json.coupons.length > 0) {
                 coupons = json.coupons;
                 checkCoupons();
+            }
+
+            // Store announcements
+            if (json.announcements && json.announcements.length > 0) {
+                announcements = json.announcements;
+                checkAnnouncements();
             }
 
             // Build queue
@@ -134,37 +142,49 @@ class WidgetController {
         }
     }
 
-    // --- Coupon Logic ---
+    function trackAnnouncementEvent(announcementId, eventType) {
+        const payload = new URLSearchParams();
+        payload.append('w', WIDGET_ID);
+        payload.append('aid', announcementId);
+        payload.append('type', eventType);
 
-    function checkCoupons() {
-        // Iterate through coupons and find the first match
-        for (const coupon of coupons) {
-            if (shouldShowCoupon(coupon)) {
-                // Initialize Trigger
-                if (coupon.trigger_type === 'exit_intent') {
-                    setupExitIntent(coupon);
-                } else {
-                    // Default to delay
-                    setTimeout(() => showCoupon(coupon), (coupon.trigger_delay || 0) * 1000);
-                }
-                return; // Only show one coupon per page load
-            }
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon(`\${API_BASE}/track-announcement`, payload);
+        } else {
+            fetch(`\${API_BASE}/track-announcement`, { method: 'POST', body: payload });
         }
     }
 
-    function shouldShowCoupon(coupon) {
+    // --- Shared Logic ---
+
+    function setupTrigger(item, showCallback) {
+        if (item.trigger_type === 'exit_intent') {
+            const handler = (e) => {
+                if (e.clientY <= 0) {
+                    document.removeEventListener('mouseleave', handler);
+                    showCallback(item);
+                }
+            };
+            document.addEventListener('mouseleave', handler);
+        } else {
+            // Default to delay
+            setTimeout(() => showCallback(item), (item.trigger_delay || 0) * 1000);
+        }
+    }
+
+    function shouldShowItem(item, type) {
         // 1. URL Match
-        if (coupon.match_url && coupon.match_url.trim() !== '') {
-            if (!window.location.href.includes(coupon.match_url)) {
+        if (item.match_url && item.match_url.trim() !== '') {
+            if (!window.location.href.includes(item.match_url)) {
                 return false;
             }
         }
 
         // 2. Frequency
-        const storageKey = `trustabee_coupon_shown_\${coupon.id}`;
+        const storageKey = `trustabee_\${type}_shown_\${item.id}`;
         const lastShown = localStorage.getItem(storageKey);
 
-        if (coupon.frequency === 'session') {
+        if (item.frequency === 'session') {
             // Check if shown in last 30 mins
             if (lastShown) {
                 const now = new Date().getTime();
@@ -177,27 +197,116 @@ class WidgetController {
         return true;
     }
 
-    function setupExitIntent(coupon) {
-        const handler = (e) => {
-            if (e.clientY <= 0) {
-                document.removeEventListener('mouseleave', handler);
-                showCoupon(coupon);
+    // --- Coupon Logic ---
+
+    function checkCoupons() {
+        for (const coupon of coupons) {
+            if (shouldShowItem(coupon, 'coupon')) {
+                setupTrigger(coupon, showCoupon);
+                return; // Only show one coupon per page load
             }
-        };
-        document.addEventListener('mouseleave', handler);
+        }
     }
 
     function showCoupon(coupon) {
-        // Re-check frequency just in case (e.g. race condition or multiple tabs?)
-        // But mainly we need to set the storage key now
+        // Frequency check & set storage
         const storageKey = `trustabee_coupon_shown_\${coupon.id}`;
         localStorage.setItem(storageKey, new Date().getTime());
 
-        // Create Modal
         if (document.getElementById(COUPON_CONTAINER_ID)) return;
 
+        createModal(COUPON_CONTAINER_ID, coupon, (content) => {
+            // Coupon Code Box
+            const codeBox = document.createElement('div');
+            codeBox.style.cssText = `
+                border: 2px dashed #ccc; padding: 15px;
+                margin: 0 0 20px 0; border-radius: 6px;
+                font-size: 20px; font-weight: bold;
+                background: rgba(0,0,0,0.03); letter-spacing: 1px;
+            `;
+            codeBox.textContent = coupon.coupon_code;
+            content.appendChild(codeBox);
+
+            // Button
+            const btn = document.createElement('button');
+            btn.textContent = coupon.button_text || 'Copy Code';
+            btn.style.cssText = `
+                background: #1a73e8; color: white; border: none;
+                padding: 12px 24px; font-size: 16px; border-radius: 6px;
+                cursor: pointer; width: 100%; font-weight: 600;
+            `;
+            btn.onclick = () => {
+                navigator.clipboard.writeText(coupon.coupon_code).then(() => {
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    trackCouponEvent(coupon.id, 'click');
+                    setTimeout(() => btn.textContent = originalText, 2000);
+                });
+            };
+            content.appendChild(btn);
+        });
+
+        trackCouponEvent(coupon.id, 'view');
+    }
+
+
+    // --- Announcement Logic ---
+
+    function checkAnnouncements() {
+        for (const announcement of announcements) {
+             // Avoid showing if coupon is already showing?
+             // For now assume they can stack or overlap, but typically one modal at a time is best.
+             // We'll let them overlap if configured so.
+            if (shouldShowItem(announcement, 'announcement')) {
+                setupTrigger(announcement, showAnnouncement);
+                return;
+            }
+        }
+    }
+
+    function showAnnouncement(announcement) {
+        const storageKey = `trustabee_announcement_shown_\${announcement.id}`;
+        localStorage.setItem(storageKey, new Date().getTime());
+
+        if (document.getElementById(ANNOUNCEMENT_CONTAINER_ID)) return;
+
+        createModal(ANNOUNCEMENT_CONTAINER_ID, announcement, (content) => {
+            // Button
+            const btn = document.createElement('button');
+            btn.textContent = announcement.btn_text || 'Learn More';
+            btn.style.cssText = `
+                background: #1a73e8; color: white; border: none;
+                padding: 12px 24px; font-size: 16px; border-radius: 6px;
+                cursor: pointer; width: 100%; font-weight: 600;
+            `;
+
+            btn.onclick = () => {
+                trackAnnouncementEvent(announcement.id, 'click');
+                if (announcement.btn_action === 'close') {
+                     const modal = document.getElementById(ANNOUNCEMENT_CONTAINER_ID);
+                     if (modal) {
+                         modal.style.opacity = '0';
+                         setTimeout(() => modal.remove(), 300);
+                     }
+                } else {
+                    // Link
+                    if (announcement.btn_link) {
+                         window.location.href = announcement.btn_link;
+                    }
+                }
+            };
+            content.appendChild(btn);
+        });
+
+        trackAnnouncementEvent(announcement.id, 'view');
+    }
+
+
+    // --- Generic Modal Builder ---
+
+    function createModal(containerId, item, contentCallback) {
         const modal = document.createElement('div');
-        modal.id = COUPON_CONTAINER_ID;
+        modal.id = containerId;
         modal.style.cssText = `
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.6); z-index: 10000;
@@ -207,8 +316,8 @@ class WidgetController {
 
         const content = document.createElement('div');
         content.style.cssText = `
-            background: \${coupon.bg_color || '#fff'};
-            color: \${coupon.text_color || '#333'};
+            background: \${item.bg_color || '#fff'};
+            color: \${item.text_color || '#333'};
             padding: 30px; border-radius: 12px;
             width: 90%; max-width: 450px;
             text-align: center; position: relative;
@@ -222,6 +331,7 @@ class WidgetController {
         closeBtn.style.cssText = `
             position: absolute; top: 10px; right: 15px;
             font-size: 24px; cursor: pointer; opacity: 0.6;
+            z-index: 10;
         `;
         closeBtn.onclick = () => {
             modal.style.opacity = '0';
@@ -230,102 +340,81 @@ class WidgetController {
         content.appendChild(closeBtn);
 
         // --- Image Layout Logic ---
+        let contentContainer = content;
+        let rightPane = null; // Used for split views
 
-        if (coupon.image_url) {
-            const imgUrl = API_BASE.replace('/api', '') + coupon.image_url;
-            const style = coupon.image_style || 'top';
+        if (item.image_url) {
+            const imgUrl = API_BASE.replace('/api', '') + item.image_url;
+            const style = item.image_style || 'top';
 
             if (style === 'background') {
                 content.style.backgroundImage = `url('\${imgUrl}')`;
                 content.style.backgroundSize = 'cover';
                 content.style.backgroundPosition = 'center';
-                // Add overlay if text might be unreadable? For now, user's risk.
             } else if (style === 'top') {
                 const img = document.createElement('img');
                 img.src = imgUrl;
                 img.style.cssText = 'width: 100%; height: 150px; object-fit: cover; border-radius: 8px 8px 0 0; margin-bottom: 20px; display: block; margin-left: -30px; margin-top: -30px; width: calc(100% + 60px);';
-                // Note: negative margins cancel out the padding to make it flush
-                content.insertBefore(img, closeBtn); // insert before content but after close? No, close is absolute.
-                // Re-append close btn to be on top? Z-index handles it.
-            } else if (style === 'left') {
+                content.appendChild(img);
+            } else if (style === 'left' || style === 'right') {
                 // Adjust Content Layout to Row
                 content.style.display = 'flex';
-                content.style.flexDirection = 'row';
+                content.style.flexDirection = style === 'left' ? 'row' : 'row-reverse';
                 content.style.maxWidth = '700px';
                 content.style.padding = '0'; // Remove padding from main container
                 content.style.overflow = 'hidden';
 
-                const leftPane = document.createElement('div');
-                leftPane.style.cssText = `
+                const imgPane = document.createElement('div');
+                imgPane.style.cssText = `
                     flex: 1; background-image: url('\${imgUrl}');
                     background-size: cover; background-position: center;
                     min-height: 300px;
                 `;
 
-                const rightPane = document.createElement('div');
-                rightPane.style.cssText = 'flex: 1; padding: 30px; display: flex; flex-direction: column; justify-content: center;';
+                const textPane = document.createElement('div');
+                textPane.style.cssText = 'flex: 1; padding: 30px; display: flex; flex-direction: column; justify-content: center; position: relative;';
 
-                // Move existing elements to right pane
-                // We haven't appended them yet to 'content', we are about to.
-                // So we'll append to rightPane instead.
+                // We must append closeBtn to textPane to ensure it is visible on the white part
+                // Or keep it absolute on 'content'. If 'content' has no padding/relative, absolute works.
+                // But if image is on right (row-reverse), right: 15px puts X on image.
+                // If image is on left, right: 15px puts X on text.
+                // Let's move close button into text pane for better visibility/contrast.
+                closeBtn.style.right = '15px';
+                closeBtn.style.top = '10px';
+                textPane.appendChild(closeBtn);
 
-                // Hack: Override appendChild for this scope or just append to rightPane
-                const originalAppend = content.appendChild.bind(content);
-                content.appendChild = (el) => {
-                    if (el === closeBtn || el === leftPane || el === rightPane) {
-                        originalAppend(el);
-                    } else {
-                        rightPane.appendChild(el);
-                    }
-                };
+                content.appendChild(imgPane);
+                content.appendChild(textPane);
 
-                originalAppend(leftPane);
-                originalAppend(rightPane);
+                contentContainer = textPane; // All subsequent text/buttons go here
             }
         }
 
         // Title
         const title = document.createElement('h2');
-        title.textContent = coupon.title;
+        title.textContent = item.title;
         title.style.margin = '0 0 10px 0';
-        content.appendChild(title);
+        contentContainer.appendChild(title);
 
-        // Description
-        if (coupon.description) {
+        // Description / Message
+        const descText = item.description || item.message;
+        if (descText) {
             const desc = document.createElement('p');
-            desc.textContent = coupon.description;
+            desc.textContent = descText;
             desc.style.cssText = 'margin: 0 0 20px 0; font-size: 16px; opacity: 0.9;';
-            content.appendChild(desc);
+            contentContainer.appendChild(desc);
         }
 
-        // Coupon Code Box (Dashed border per design)
-        const codeBox = document.createElement('div');
-        codeBox.style.cssText = `
-            border: 2px dashed #ccc; padding: 15px;
-            margin: 0 0 20px 0; border-radius: 6px;
-            font-size: 20px; font-weight: bold;
-            background: rgba(0,0,0,0.03); letter-spacing: 1px;
-        `;
-        codeBox.textContent = coupon.coupon_code;
-        content.appendChild(codeBox);
+        // Callback for specific elements (coupon code or button)
+        contentCallback(contentContainer);
 
-        // Button
-        const btn = document.createElement('button');
-        btn.textContent = coupon.button_text || 'Copy Code';
-        btn.style.cssText = `
-            background: #1a73e8; color: white; border: none;
-            padding: 12px 24px; font-size: 16px; border-radius: 6px;
-            cursor: pointer; width: 100%; font-weight: 600;
-        `;
-        btn.onclick = () => {
-            navigator.clipboard.writeText(coupon.coupon_code).then(() => {
-                const originalText = btn.textContent;
-                btn.textContent = 'Copied!';
-                trackCouponEvent(coupon.id, 'click');
-                setTimeout(() => btn.textContent = originalText, 2000);
-            });
-        };
-        content.appendChild(btn);
+        // Branding
+        if (!item.remove_branding) {
+             const branding = document.createElement('div');
+             branding.textContent = 'Powered by Trustabee';
+             branding.style.cssText = 'font-size: 10px; color: #999; margin-top: 15px; text-align: center; width: 100%;';
+             contentContainer.appendChild(branding);
+        }
 
         modal.appendChild(content);
         document.body.appendChild(modal);
@@ -335,12 +424,9 @@ class WidgetController {
             modal.style.opacity = '1';
             content.style.transform = 'scale(1)';
         });
-
-        // Track View
-        trackCouponEvent(coupon.id, 'view');
     }
 
-    // --- Widget Logic ---
+    // --- Widget Logic (Live Conversion) ---
 
     function createWidget() {
         if (document.getElementById(CONTAINER_ID)) return;
@@ -356,7 +442,7 @@ class WidgetController {
                 <p class="action-text"></p>
                 <div class="verification" style="display:none">
                     <span class="checkmark">&#x2713;</span>
-                    <span class="verified-text">Verified by TrustPilot</span>
+                    <span class="verified-text">Verified by Trustabee</span>
                 </div>
             </div>
         `;
@@ -507,6 +593,11 @@ JS;
         $stmt->execute([$widget_id]);
         $coupons = $stmt->fetchAll();
 
+        // Fetch active announcements
+        $stmt = $pdo->prepare("SELECT * FROM announcements WHERE widget_id = ? AND active = 1");
+        $stmt->execute([$widget_id]);
+        $announcements = $stmt->fetchAll();
+
         // 1. Live Visitors (Active in last 30 minutes, distinct)
         $stmt = $pdo->prepare("SELECT COUNT(DISTINCT visitor_id) as count FROM live_visitors WHERE widget_id = ? AND last_seen > (NOW() - INTERVAL 30 MINUTE)");
         $stmt->execute([$widget_id]);
@@ -561,6 +652,7 @@ JS;
                 'live_visitor_config' => $live_config
             ],
             'coupons' => $coupons,
+            'announcements' => $announcements,
             'live_count' => $live_count,
             'historical_count' => $historical_count,
             'notifications' => $notifications
@@ -634,6 +726,19 @@ JS;
         $pdo = Database::getInstance();
         $stmt = $pdo->prepare("INSERT INTO coupon_analytics (coupon_id, event_type, created_at) VALUES (?, ?, NOW())");
         $stmt->execute([$coupon_id, $type]);
+    }
+
+    public function trackAnnouncement() {
+        $this->addCors();
+        $widget_id = $_POST['w'] ?? 0;
+        $announcement_id = $_POST['aid'] ?? 0;
+        $type = $_POST['type'] ?? 'unknown';
+
+        if (!$widget_id || !$announcement_id) return;
+
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare("INSERT INTO announcement_analytics (announcement_id, event_type, created_at) VALUES (?, ?, NOW())");
+        $stmt->execute([$announcement_id, $type]);
     }
 
     private function addCors() {

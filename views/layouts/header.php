@@ -186,6 +186,7 @@
                     'coupon' => ['icon' => 'fa-ticket', 'label' => 'Coupon'],
                     'video' => ['icon' => 'fa-video', 'label' => 'Video'],
                     'opt-in' => ['icon' => 'fa-envelope', 'label' => 'Opt-in'],
+                    'announcement' => ['icon' => 'fa-bullhorn', 'label' => 'Announcement'],
                 ];
 
                 foreach ($features as $key => $feature):
