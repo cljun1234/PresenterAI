@@ -68,3 +68,7 @@ ALTER TABLE widgets ADD COLUMN live_visitor_config TEXT DEFAULT NULL; -- JSON st
 ALTER TABLE widgets ADD COLUMN live_conversion_enabled BOOLEAN DEFAULT 0;
 ALTER TABLE widgets ADD COLUMN use_real_conversion BOOLEAN DEFAULT 1;
 ALTER TABLE widgets ADD COLUMN use_simulated_conversion BOOLEAN DEFAULT 1;
+-- Ensure Live Conversion Settings are present
+ALTER TABLE widgets ADD COLUMN live_conversion_enabled BOOLEAN DEFAULT 0;
+ALTER TABLE widgets ADD COLUMN use_real_conversion BOOLEAN DEFAULT 1;
+ALTER TABLE widgets ADD COLUMN use_simulated_conversion BOOLEAN DEFAULT 1;

@@ -115,6 +115,8 @@ class DashboardController {
     }
 
     public function toggleFeature() {
+        header('Content-Type: application/json');
+
         if (!isset($_SESSION['user_id'])) {
             http_response_code(401);
             echo json_encode(['error' => 'Unauthorized']);
@@ -125,7 +127,15 @@ class DashboardController {
         $user_id = $_SESSION['user_id'];
 
         // Parse JSON input
-        $input = json_decode(file_get_contents('php://input'), true);
+        $raw_input = file_get_contents('php://input');
+        $input = json_decode($raw_input, true);
+
+        if (!$input) {
+             http_response_code(400);
+             echo json_encode(['error' => 'Invalid JSON input', 'raw' => $raw_input]);
+             exit;
+        }
+
         $feature = $input['feature'] ?? '';
         $enabled = !empty($input['enabled']); // boolean true/false
         $widget_id = $input['widget_id'] ?? 0;
@@ -140,17 +150,21 @@ class DashboardController {
 
         if (!$column) {
             http_response_code(400);
-            echo json_encode(['error' => 'Invalid feature']);
+            echo json_encode(['error' => 'Invalid feature: ' . $feature]);
             exit;
         }
 
-        // Update
-        // Ensure the widget belongs to the user
-        $stmt = $pdo->prepare("UPDATE widgets SET $column = ? WHERE id = ? AND user_id = ?");
-        $stmt->execute([$enabled ? 1 : 0, $widget_id, $user_id]);
+        try {
+            // Update
+            // Ensure the widget belongs to the user
+            $stmt = $pdo->prepare("UPDATE widgets SET $column = ? WHERE id = ? AND user_id = ?");
+            $stmt->execute([$enabled ? 1 : 0, $widget_id, $user_id]);
 
-        header('Content-Type: application/json');
-        echo json_encode(['success' => true, 'feature' => $feature, 'enabled' => $enabled]);
+            echo json_encode(['success' => true, 'feature' => $feature, 'enabled' => $enabled]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Database error', 'details' => $e->getMessage()]);
+        }
         exit;
     }
 

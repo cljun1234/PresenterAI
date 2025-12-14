@@ -180,11 +180,18 @@ async function toggleFeature(featureName, isEnabled) {
                 widget_id: WIDGET_ID
             })
         });
-        const json = await response.json();
-        if (json.success) {
-            showToast();
-        } else {
-            alert('Failed to update setting.');
+            const text = await response.text();
+            try {
+                const json = JSON.parse(text);
+                if (json.success) {
+                    showToast();
+                } else {
+                    console.error('API Error:', json);
+                    alert('Failed to update setting: ' + (json.error || 'Unknown error'));
+                }
+            } catch (jsonError) {
+                console.error('JSON Parse Error:', jsonError, text);
+                alert('Server returned invalid JSON. Check console.');
         }
     } catch (e) {
         console.error(e);
