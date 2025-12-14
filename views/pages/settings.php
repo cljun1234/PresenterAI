@@ -26,6 +26,21 @@ require_once __DIR__ . '/../layouts/header.php';
                 Enable "Magical Detection" (Auto-capture form submissions)
             </label>
         </div>
+
+        <div class="form-group" style="margin-top: 20px;">
+            <label>Timezone</label>
+            <select name="timezone" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                <?php
+                $timezones = DateTimeZone::listIdentifiers();
+                $currentTz = $widget['timezone'] ?? 'UTC';
+                foreach ($timezones as $tz) {
+                    $selected = ($tz == $currentTz) ? 'selected' : '';
+                    echo "<option value=\"$tz\" $selected>$tz</option>";
+                }
+                ?>
+            </select>
+        </div>
+
         <button type="submit" class="btn">Save Settings</button>
     </form>
 </div>

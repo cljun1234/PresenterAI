@@ -42,16 +42,35 @@ class DashboardController {
 
         // Process data to fill gaps and create hourly peaks
         // We want a full 24-hour range on the chart
+        $timezone = $widget['timezone'] ?? 'UTC';
+        try {
+            $tz = new DateTimeZone($timezone);
+        } catch (Exception $e) {
+            $tz = new DateTimeZone('UTC');
+        }
+
         $hourly_buckets = [];
+        $now = new DateTime('now', $tz);
+
+        // Generate buckets for the last 24 hours relative to the USER'S timezone
         for ($i = 23; $i >= 0; $i--) {
-             // Create label like '15:00'
-             $h = date('H:00', strtotime("-$i hour"));
+             $dt = clone $now;
+             $dt->modify("-$i hour");
+             $h = $dt->format('H:00');
              $hourly_buckets[$h] = 0;
         }
 
+        // Server time is likely UTC or system default.
+        // We assume 'created_at' comes out as server time string.
+        // We need to convert it to the user's timezone.
+        $serverTz = new DateTimeZone(date_default_timezone_get());
+
         foreach ($raw_data as $row) {
             // Map the timestamp to its hour bucket
-            $h = date('H:00', strtotime($row['created_at']));
+            $dt = new DateTime($row['created_at'], $serverTz);
+            $dt->setTimezone($tz);
+            $h = $dt->format('H:00');
+
             if (isset($hourly_buckets[$h])) {
                 // Use the max visitor count recorded in that hour
                 $hourly_buckets[$h] = max($hourly_buckets[$h], $row['visitor_count']);
@@ -192,10 +211,11 @@ class DashboardController {
         $user_id = $_SESSION['user_id'];
 
         $magical = isset($_POST['magical_detection']) ? 1 : 0;
+        $timezone = $_POST['timezone'] ?? 'UTC';
 
         // Update first widget found
-        $stmt = $pdo->prepare("UPDATE widgets SET magical_detection = ? WHERE user_id = ?");
-        $stmt->execute([$magical, $user_id]);
+        $stmt = $pdo->prepare("UPDATE widgets SET magical_detection = ?, timezone = ? WHERE user_id = ?");
+        $stmt->execute([$magical, $timezone, $user_id]);
 
         header('Location: /settings');
     }
