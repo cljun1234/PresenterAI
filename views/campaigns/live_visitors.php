@@ -40,6 +40,38 @@ input:focus + .slider { box-shadow: 0 0 1px var(--primary-color); }
 input:checked + .slider:before { transform: translateX(24px); }
 .form-group.toggle { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 .form-group.toggle label { margin-bottom: 0; font-size: 1.1rem; font-weight: 600; }
+
+/* Widget Preview Styles */
+.widget-preview-container {
+    margin-top: 20px;
+    padding: 20px;
+    background: #f4f6f8;
+    border: 1px dashed #ccc;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.sales-notification-widget {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    width: 300px;
+    font-family: sans-serif;
+    color: #333;
+    /* Static positioning for preview */
+    position: relative;
+}
+.sales-notification-widget .map-placeholder { width: 50px; height: 50px; background: #eee; border-radius: 4px; margin-right: 10px; flex-shrink: 0; overflow: hidden; }
+.sales-notification-widget .map-placeholder img { width: 100%; height: 100%; object-fit: cover; }
+.sales-notification-widget .content { display: flex; flex-direction: column; justify-content: center; flex-grow: 1; line-height: 1.2; }
+.sales-notification-widget .name { font-weight: 700; color: inherit; font-size: 14px; margin: 0; }
+.sales-notification-widget .action-text { margin: 2px 0 5px 0; color: inherit; opacity: 0.8; font-size: 13px; }
+.sales-notification-widget .verification { display: flex; align-items: center; font-size: 11px; color: #1a73e8; font-weight: 500; }
+.sales-notification-widget .checkmark { font-weight: bold; margin-right: 4px; }
 </style>
 
 <!-- Full Width Enable/Disable Card -->
@@ -73,15 +105,25 @@ input:checked + .slider:before { transform: translateX(24px); }
 
         <div class="form-group">
             <label>Background Color</label>
-            <input type="color" name="bg_color" value="<?php echo htmlspecialchars($bg); ?>" style="width: 100%; height: 40px;">
+            <input type="color" id="bgInput" name="bg_color" value="<?php echo htmlspecialchars($bg); ?>" style="width: 100%; height: 40px;">
         </div>
 
          <div class="form-group">
             <label>Text Color</label>
-            <input type="color" name="text_color" value="<?php echo htmlspecialchars($txt); ?>" style="width: 100%; height: 40px;">
+            <input type="color" id="txtInput" name="text_color" value="<?php echo htmlspecialchars($txt); ?>" style="width: 100%; height: 40px;">
         </div>
 
-        <button type="submit" class="btn">Save Appearance</button>
+        <div class="widget-preview-container">
+            <div id="previewWidget" class="sales-notification-widget" style="background-color: <?php echo htmlspecialchars($bg); ?>; color: <?php echo htmlspecialchars($txt); ?>;">
+                <!-- Live Visitor Mode: No Map, just text -->
+                 <div class="content" style="width: 100%;">
+                    <p class="name">Live Visitors</p>
+                    <p class="action-text">24 people are viewing this page right now.</p>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn" style="margin-top: 15px;">Save Appearance</button>
     </form>
 </div>
 
@@ -127,6 +169,19 @@ input:checked + .slider:before { transform: translateX(24px); }
       x.style.visibility = "visible";
       setTimeout(function(){ x.style.visibility = "hidden"; }, 3000);
     }
+
+    // Preview Logic
+    const bgInput = document.getElementById('bgInput');
+    const txtInput = document.getElementById('txtInput');
+    const previewWidget = document.getElementById('previewWidget');
+
+    bgInput.addEventListener('input', function() {
+        previewWidget.style.backgroundColor = this.value;
+    });
+
+    txtInput.addEventListener('input', function() {
+        previewWidget.style.color = this.value;
+    });
 </script>
 
 <?php require_once __DIR__ . '/../layouts/footer.php'; ?>

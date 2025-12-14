@@ -35,9 +35,43 @@ require_once __DIR__ . '/../layouts/header.php';
 input:checked + .slider { background-color: var(--primary-color); }
 input:focus + .slider { box-shadow: 0 0 1px var(--primary-color); }
 input:checked + .slider:before { transform: translateX(24px); }
-.setting-row { display: flex; align-items: center; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid #eee; }
+.setting-row { display: flex; align-items: flex-start; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid #eee; flex-wrap: wrap; }
+.setting-info { flex: 1; min-width: 200px; padding-right: 20px; }
 .setting-info h3 { margin: 0 0 5px 0; font-size: 1rem; }
 .setting-info p { margin: 0; color: #777; font-size: 0.9rem; }
+
+/* Widget Preview Styles */
+.widget-preview-wrapper {
+    width: 100%;
+    margin-top: 15px;
+    padding: 15px;
+    background: #f4f6f8;
+    border: 1px dashed #ccc;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.sales-notification-widget {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    width: 300px;
+    font-family: sans-serif;
+    color: #333;
+    position: relative;
+}
+.sales-notification-widget .map-placeholder { width: 50px; height: 50px; background: #eee; border-radius: 4px; margin-right: 10px; flex-shrink: 0; overflow: hidden; }
+.sales-notification-widget .map-placeholder img { width: 100%; height: 100%; object-fit: cover; }
+.sales-notification-widget .content { display: flex; flex-direction: column; justify-content: center; flex-grow: 1; line-height: 1.2; }
+.sales-notification-widget .name { font-weight: 700; color: inherit; font-size: 14px; margin: 0; }
+.sales-notification-widget .action-text { margin: 2px 0 5px 0; color: inherit; opacity: 0.8; font-size: 13px; }
+.sales-notification-widget .verification { display: flex; align-items: center; font-size: 11px; color: #1a73e8; font-weight: 500; }
+.sales-notification-widget .checkmark { font-weight: bold; margin-right: 4px; }
 </style>
 
 <!-- Main Toggle & Settings -->
@@ -53,6 +87,7 @@ input:checked + .slider:before { transform: translateX(24px); }
             <input type="checkbox" onchange="toggleFeature('live_conversion', this.checked)" <?php echo ($widget['live_conversion_enabled'] ?? false) ? 'checked' : ''; ?>>
             <span class="slider"></span>
         </label>
+        <!-- No specific preview for the master toggle, as it enables the system generally -->
     </div>
 
     <div class="setting-row">
@@ -64,6 +99,20 @@ input:checked + .slider:before { transform: translateX(24px); }
             <input type="checkbox" onchange="toggleFeature('magical_detection', this.checked)" <?php echo ($widget['magical_detection'] ?? true) ? 'checked' : ''; ?>>
             <span class="slider"></span>
         </label>
+        <div class="widget-preview-wrapper">
+             <div class="sales-notification-widget">
+                <div class="map-placeholder"><img src="https://provely-public.s3.amazonaws.com/images/maps/default.jpg" alt="map" /></div>
+                <div class="content">
+                     <p class="name">Captured Lead</p>
+                     <p class="action-text">Submitted 'Contact Us' form</p>
+                     <div class="verification" style="display:flex">
+                        <span class="checkmark">&#x2713;</span>
+                        <span class="verified-text">Verified by TrustPilot</span>
+                    </div>
+                </div>
+             </div>
+             <div style="font-size: 0.8rem; color: #666; margin-left: 15px;">Example of captured data</div>
+        </div>
     </div>
 
     <div class="setting-row">
@@ -75,6 +124,19 @@ input:checked + .slider:before { transform: translateX(24px); }
             <input type="checkbox" onchange="toggleFeature('use_real_conversion', this.checked)" <?php echo ($widget['use_real_conversion'] ?? true) ? 'checked' : ''; ?>>
             <span class="slider"></span>
         </label>
+        <div class="widget-preview-wrapper">
+            <div class="sales-notification-widget">
+                <div class="map-placeholder"><img src="https://provely-public.s3.amazonaws.com/images/maps/default.jpg" alt="map" /></div>
+                <div class="content">
+                     <p class="name">A visitor from London</p>
+                     <p class="action-text">Just signed up</p>
+                     <div class="verification" style="display:flex">
+                        <span class="checkmark">&#x2713;</span>
+                        <span class="verified-text">Verified by TrustPilot</span>
+                    </div>
+                </div>
+             </div>
+        </div>
     </div>
 
     <div class="setting-row">
@@ -86,6 +148,16 @@ input:checked + .slider:before { transform: translateX(24px); }
             <input type="checkbox" onchange="toggleFeature('use_simulated_conversion', this.checked)" <?php echo ($widget['use_simulated_conversion'] ?? true) ? 'checked' : ''; ?>>
             <span class="slider"></span>
         </label>
+        <div class="widget-preview-wrapper">
+            <div class="sales-notification-widget">
+                <div class="map-placeholder"><img src="https://provely-public.s3.amazonaws.com/images/maps/default.jpg" alt="map" /></div>
+                <div class="content">
+                     <p class="name">John D.</p>
+                     <p class="action-text">Purchased a Pro Plan</p>
+                     <!-- Simulated data has NO verified badge -->
+                </div>
+             </div>
+        </div>
     </div>
 </div>
 
