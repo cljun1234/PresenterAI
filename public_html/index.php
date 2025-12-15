@@ -22,15 +22,37 @@ $router->map('GET', '/logout', 'AuthController#logout', 'logout');
 
 // Dashboard
 $router->map('GET', '/', 'DashboardController#index', 'dashboard');
+$router->map('GET', '/settings', 'DashboardController#settings', 'settings');
+$router->map('GET', '/campaigns/[*:type]', 'DashboardController#campaigns', 'campaigns');
+
 $router->map('POST', '/widget/save', 'DashboardController#saveConfig', 'save_config');
+$router->map('POST', '/save-live-visitor-config', 'DashboardController#saveLiveVisitorConfig', 'save_live_visitor');
+$router->map('POST', '/api/toggle-feature', 'DashboardController#toggleFeature', 'api_toggle_feature');
+
 $router->map('POST', '/notification/add', 'DashboardController#addNotification', 'add_notification');
 $router->map('GET', '/notification/delete/[i:id]', 'DashboardController#deleteNotification', 'delete_notification');
+$router->map('GET', '/event/delete/[i:id]', 'DashboardController#deleteEvent', 'delete_event');
+
+// Coupons
+$router->map('POST', '/campaigns/coupon/save', 'CouponController#save', 'coupon_save');
+$router->map('GET', '/campaigns/coupon/delete/[i:id]', 'CouponController#delete', 'coupon_delete');
+
+// Announcements
+$router->map('POST', '/campaigns/announcement/save', 'AnnouncementController#save', 'announcement_save');
+$router->map('GET', '/campaigns/announcement/delete/[i:id]', 'AnnouncementController#delete', 'announcement_delete');
+
+// Videos
+$router->map('POST', '/campaigns/video/save', 'VideoController#save', 'video_save');
+$router->map('GET', '/campaigns/video/delete/[i:id]', 'VideoController#delete', 'video_delete');
 
 // API / Widget
 $router->map('GET', '/api/widget.js', 'WidgetController#serveScript', 'widget_js');
 $router->map('GET', '/api/data', 'WidgetController#getData', 'widget_data');
 $router->map('POST', '/api/heartbeat', 'WidgetController#heartbeat', 'widget_heartbeat');
 $router->map('POST', '/api/track', 'WidgetController#trackEvent', 'widget_track');
+$router->map('POST', '/api/track-coupon', 'WidgetController#trackCoupon', 'widget_track_coupon');
+$router->map('POST', '/api/track-announcement', 'WidgetController#trackAnnouncement', 'widget_track_announcement');
+$router->map('POST', '/api/track-video', 'WidgetController#trackVideo', 'widget_track_video');
 
 // Match request
 $match = $router->match();

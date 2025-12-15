@@ -22,8 +22,14 @@ class WidgetController {
     const DISPLAY_DURATION_MS = 5000;
     const HIDE_DURATION_MS = 5000;
     const CONTAINER_ID = 'trustabee-widget';
+    const COUPON_CONTAINER_ID = 'trustabee-coupon-modal';
+    const ANNOUNCEMENT_CONTAINER_ID = 'trustabee-announcement-modal';
+    const VIDEO_CONTAINER_ID = 'trustabee-video-modal';
 
     let data = [];
+    let coupons = [];
+    let announcements = [];
+    let videos = [];
     let currentIndex = 0;
     let widgetElement;
     let timerId;
@@ -35,11 +41,31 @@ class WidgetController {
             const response = await fetch(`\${API_BASE}/data?w=\${WIDGET_ID}`);
             const json = await response.json();
 
+            // Store coupons
+            if (json.coupons && json.coupons.length > 0) {
+                coupons = json.coupons;
+                checkCoupons();
+            }
+
+            // Store announcements
+            if (json.announcements && json.announcements.length > 0) {
+                announcements = json.announcements;
+                checkAnnouncements();
+            }
+
+            // Store videos
+            if (json.videos && json.videos.length > 0) {
+                videos = json.videos;
+                checkVideos();
+            }
+
             // Build queue
             data = [];
 
             // 1. Live count
-            if (json.live_count > 0) {
+            // Only if enabled in config
+            const isLiveEnabled = json.config && json.config.live_visitor_enabled;
+            if (isLiveEnabled && json.live_count > 0) {
                  data.push({
                     type: 'live_count',
                     count: json.live_count,
@@ -62,7 +88,7 @@ class WidgetController {
             }
 
             if (data.length > 0) {
-                initWidget();
+                initWidget(json.config ? json.config.live_visitor_config : null);
             }
 
             if (json.config && json.config.magical_detection) {
@@ -111,7 +137,426 @@ class WidgetController {
         }
     }
 
-    // --- Widget Logic ---
+    function trackCouponEvent(couponId, eventType) {
+        const payload = new URLSearchParams();
+        payload.append('w', WIDGET_ID);
+        payload.append('cid', couponId);
+        payload.append('type', eventType);
+
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon(`\${API_BASE}/track-coupon`, payload);
+        } else {
+            fetch(`\${API_BASE}/track-coupon`, { method: 'POST', body: payload });
+        }
+    }
+
+    function trackAnnouncementEvent(announcementId, eventType) {
+        const payload = new URLSearchParams();
+        payload.append('w', WIDGET_ID);
+        payload.append('aid', announcementId);
+        payload.append('type', eventType);
+
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon(`\${API_BASE}/track-announcement`, payload);
+        } else {
+            fetch(`\${API_BASE}/track-announcement`, { method: 'POST', body: payload });
+        }
+    }
+
+    function trackVideoEvent(videoId, eventType) {
+        const payload = new URLSearchParams();
+        payload.append('w', WIDGET_ID);
+        payload.append('vid', videoId);
+        payload.append('type', eventType);
+
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon(`\${API_BASE}/track-video`, payload);
+        } else {
+            fetch(`\${API_BASE}/track-video`, { method: 'POST', body: payload });
+        }
+    }
+
+    // --- Shared Logic ---
+
+    function setupTrigger(item, showCallback) {
+        if (item.trigger_type === 'exit_intent') {
+            const handler = (e) => {
+                if (e.clientY <= 0) {
+                    document.removeEventListener('mouseleave', handler);
+                    showCallback(item);
+                }
+            };
+            document.addEventListener('mouseleave', handler);
+        } else {
+            // Default to delay
+            setTimeout(() => showCallback(item), (item.trigger_delay || 0) * 1000);
+        }
+    }
+
+    function shouldShowItem(item, type) {
+        // 1. URL Match
+        if (item.match_url && item.match_url.trim() !== '') {
+            if (!window.location.href.includes(item.match_url)) {
+                return false;
+            }
+        }
+
+        // 2. Frequency
+        const storageKey = `trustabee_\${type}_shown_\${item.id}`;
+        const lastShown = localStorage.getItem(storageKey);
+
+        if (item.frequency === 'session') {
+            // Check if shown in last 30 mins
+            if (lastShown) {
+                const now = new Date().getTime();
+                const diffMinutes = (now - parseInt(lastShown)) / 1000 / 60;
+                if (diffMinutes < 30) return false;
+            }
+        }
+        // 'every_load' just passes through
+
+        return true;
+    }
+
+    // --- Coupon Logic ---
+
+    function checkCoupons() {
+        for (const coupon of coupons) {
+            if (shouldShowItem(coupon, 'coupon')) {
+                setupTrigger(coupon, showCoupon);
+                return; // Only show one coupon per page load
+            }
+        }
+    }
+
+    function showCoupon(coupon) {
+        // Frequency check & set storage
+        const storageKey = `trustabee_coupon_shown_\${coupon.id}`;
+        localStorage.setItem(storageKey, new Date().getTime());
+
+        if (document.getElementById(COUPON_CONTAINER_ID)) return;
+
+        createModal(COUPON_CONTAINER_ID, coupon, (content) => {
+            // Coupon Code Box
+            const codeBox = document.createElement('div');
+            codeBox.style.cssText = `
+                border: 2px dashed #ccc; padding: 15px;
+                margin: 0 0 20px 0; border-radius: 6px;
+                font-size: 20px; font-weight: bold;
+                background: rgba(0,0,0,0.03); letter-spacing: 1px;
+            `;
+            codeBox.textContent = coupon.coupon_code;
+            content.appendChild(codeBox);
+
+            // Button
+            const btn = document.createElement('button');
+            btn.textContent = coupon.button_text || 'Copy Code';
+            btn.style.cssText = `
+                background: #1a73e8; color: white; border: none;
+                padding: 12px 24px; font-size: 16px; border-radius: 6px;
+                cursor: pointer; width: 100%; font-weight: 600;
+            `;
+            btn.onclick = () => {
+                navigator.clipboard.writeText(coupon.coupon_code).then(() => {
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    trackCouponEvent(coupon.id, 'click');
+                    setTimeout(() => btn.textContent = originalText, 2000);
+                });
+            };
+            content.appendChild(btn);
+        });
+
+        trackCouponEvent(coupon.id, 'view');
+    }
+
+
+    // --- Announcement Logic ---
+
+    function checkAnnouncements() {
+        for (const announcement of announcements) {
+             // Avoid showing if coupon is already showing?
+             // For now assume they can stack or overlap, but typically one modal at a time is best.
+             // We'll let them overlap if configured so.
+            if (shouldShowItem(announcement, 'announcement')) {
+                setupTrigger(announcement, showAnnouncement);
+                return;
+            }
+        }
+    }
+
+    function showAnnouncement(announcement) {
+        const storageKey = `trustabee_announcement_shown_\${announcement.id}`;
+        localStorage.setItem(storageKey, new Date().getTime());
+
+        if (document.getElementById(ANNOUNCEMENT_CONTAINER_ID)) return;
+
+        createModal(ANNOUNCEMENT_CONTAINER_ID, announcement, (content) => {
+            // Button
+            const btn = document.createElement('button');
+            btn.textContent = announcement.btn_text || 'Learn More';
+            btn.style.cssText = `
+                background: #1a73e8; color: white; border: none;
+                padding: 12px 24px; font-size: 16px; border-radius: 6px;
+                cursor: pointer; width: 100%; font-weight: 600;
+            `;
+
+            btn.onclick = () => {
+                trackAnnouncementEvent(announcement.id, 'click');
+                if (announcement.btn_action === 'close') {
+                     const modal = document.getElementById(ANNOUNCEMENT_CONTAINER_ID);
+                     if (modal) {
+                         modal.style.opacity = '0';
+                         setTimeout(() => modal.remove(), 300);
+                     }
+                } else {
+                    // Link
+                    if (announcement.btn_link) {
+                         window.location.href = announcement.btn_link;
+                    }
+                }
+            };
+            content.appendChild(btn);
+        });
+
+        trackAnnouncementEvent(announcement.id, 'view');
+    }
+
+    // --- Video Logic ---
+
+    function checkVideos() {
+        for (const video of videos) {
+            if (shouldShowItem(video, 'video')) {
+                setupTrigger(video, showVideo);
+                return;
+            }
+        }
+    }
+
+    function createVideoElement(url) {
+        if (url.includes('youtube.com') || url.includes('youtu.be')) {
+            let videoId = '';
+            if (url.includes('youtu.be')) {
+                videoId = url.split('/').pop();
+            } else {
+                const params = new URLSearchParams(new URL(url).search);
+                videoId = params.get('v');
+            }
+            if (videoId) {
+                const iframe = document.createElement('iframe');
+                iframe.width = "100%";
+                iframe.height = "220";
+                iframe.src = `https://www.youtube.com/embed/\${videoId}?autoplay=1&mute=1`;
+                iframe.frameBorder = "0";
+                iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+                iframe.allowFullscreen = true;
+                iframe.style.borderRadius = "8px";
+                iframe.style.marginBottom = "20px";
+                return iframe;
+            }
+        } else if (url.includes('vimeo.com')) {
+            const videoId = url.split('/').pop();
+            if (videoId) {
+                const iframe = document.createElement('iframe');
+                iframe.src = `https://player.vimeo.com/video/\${videoId}?autoplay=1&muted=1`;
+                iframe.width = "100%";
+                iframe.height = "220";
+                iframe.frameBorder = "0";
+                iframe.allow = "autoplay; fullscreen";
+                iframe.allowFullscreen = true;
+                iframe.style.borderRadius = "8px";
+                iframe.style.marginBottom = "20px";
+                return iframe;
+            }
+        } else {
+            // Hosted video
+            const videoEl = document.createElement('video');
+            videoEl.src = url;
+            videoEl.width = "100%"; // Note: width is attribute here, or style
+            videoEl.style.width = "100%";
+            videoEl.height = 220; // attribute
+            videoEl.autoplay = true;
+            videoEl.muted = true;
+            videoEl.controls = true;
+            videoEl.playsInline = true;
+            videoEl.style.borderRadius = "8px";
+            videoEl.style.marginBottom = "20px";
+            videoEl.style.objectFit = "cover";
+            return videoEl;
+        }
+        return null;
+    }
+
+    function showVideo(video) {
+        const storageKey = `trustabee_video_shown_\${video.id}`;
+        localStorage.setItem(storageKey, new Date().getTime());
+
+        if (document.getElementById(VIDEO_CONTAINER_ID)) return;
+
+        createModal(VIDEO_CONTAINER_ID, video, (content) => {
+            // Video Embed
+            if (video.video_url) {
+                const videoEl = createVideoElement(video.video_url);
+                if (videoEl) {
+                    content.appendChild(videoEl);
+                }
+            }
+
+            // Button
+            const btn = document.createElement('button');
+            btn.textContent = video.btn_text || 'Learn More';
+            btn.style.cssText = `
+                background: #1a73e8; color: white; border: none;
+                padding: 12px 24px; font-size: 16px; border-radius: 6px;
+                cursor: pointer; width: 100%; font-weight: 600;
+            `;
+
+            btn.onclick = () => {
+                trackVideoEvent(video.id, 'click');
+                if (video.btn_action === 'close') {
+                     const modal = document.getElementById(VIDEO_CONTAINER_ID);
+                     if (modal) {
+                         modal.style.opacity = '0';
+                         setTimeout(() => modal.remove(), 300);
+                     }
+                } else {
+                    // Link
+                    if (video.btn_link) {
+                         window.location.href = video.btn_link;
+                    }
+                }
+            };
+            content.appendChild(btn);
+        });
+
+        trackVideoEvent(video.id, 'view');
+    }
+
+    // --- Generic Modal Builder ---
+
+    function createModal(containerId, item, contentCallback) {
+        const modal = document.createElement('div');
+        modal.id = containerId;
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 10000;
+            display: flex; align-items: center; justify-content: center;
+            font-family: sans-serif; opacity: 0; transition: opacity 0.3s;
+        `;
+
+        const content = document.createElement('div');
+        content.style.cssText = `
+            background: \${item.bg_color || '#fff'};
+            color: \${item.text_color || '#333'};
+            padding: 30px; border-radius: 12px;
+            width: 90%; max-width: 450px;
+            text-align: center; position: relative;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            transform: scale(0.9); transition: transform 0.3s;
+        `;
+
+        // Close Button
+        const closeBtn = document.createElement('div');
+        closeBtn.innerHTML = '&times;';
+        closeBtn.style.cssText = `
+            position: absolute; top: 10px; right: 15px;
+            font-size: 24px; cursor: pointer; opacity: 0.6;
+            z-index: 10;
+        `;
+        closeBtn.onclick = () => {
+            modal.style.opacity = '0';
+            setTimeout(() => modal.remove(), 300);
+        };
+        content.appendChild(closeBtn);
+
+        // --- Image Layout Logic ---
+        let contentContainer = content;
+        let rightPane = null; // Used for split views
+
+        if (item.image_url) {
+            const imgUrl = API_BASE.replace('/api', '') + item.image_url;
+            const style = item.image_style || 'top';
+
+            if (style === 'background') {
+                content.style.backgroundImage = `url('\${imgUrl}')`;
+                content.style.backgroundSize = 'cover';
+                content.style.backgroundPosition = 'center';
+            } else if (style === 'top') {
+                const img = document.createElement('img');
+                img.src = imgUrl;
+                img.style.cssText = 'width: 100%; height: 150px; object-fit: cover; border-radius: 8px 8px 0 0; margin-bottom: 20px; display: block; margin-left: -30px; margin-top: -30px; width: calc(100% + 60px);';
+                content.appendChild(img);
+            } else if (style === 'left' || style === 'right') {
+                // Adjust Content Layout to Row
+                content.style.display = 'flex';
+                content.style.flexDirection = style === 'left' ? 'row' : 'row-reverse';
+                content.style.maxWidth = '700px';
+                content.style.padding = '0'; // Remove padding from main container
+                content.style.overflow = 'hidden';
+
+                const imgPane = document.createElement('div');
+                imgPane.style.cssText = `
+                    flex: 1; background-image: url('\${imgUrl}');
+                    background-size: cover; background-position: center;
+                    min-height: 300px;
+                `;
+
+                const textPane = document.createElement('div');
+                textPane.style.cssText = 'flex: 1; padding: 30px; display: flex; flex-direction: column; justify-content: center; position: relative;';
+
+                // We must append closeBtn to textPane to ensure it is visible on the white part
+                // Or keep it absolute on 'content'. If 'content' has no padding/relative, absolute works.
+                // But if image is on right (row-reverse), right: 15px puts X on image.
+                // If image is on left, right: 15px puts X on text.
+                // Let's move close button into text pane for better visibility/contrast.
+                closeBtn.style.right = '15px';
+                closeBtn.style.top = '10px';
+                textPane.appendChild(closeBtn);
+
+                content.appendChild(imgPane);
+                content.appendChild(textPane);
+
+                contentContainer = textPane; // All subsequent text/buttons go here
+            }
+        }
+
+        // Title
+        const title = document.createElement('h2');
+        title.textContent = item.title;
+        title.style.margin = '0 0 10px 0';
+        contentContainer.appendChild(title);
+
+        // Description / Message
+        const descText = item.description || item.message;
+        if (descText) {
+            const desc = document.createElement('p');
+            desc.textContent = descText;
+            desc.style.cssText = 'margin: 0 0 20px 0; font-size: 16px; opacity: 0.9;';
+            contentContainer.appendChild(desc);
+        }
+
+        // Callback for specific elements (coupon code or button)
+        contentCallback(contentContainer);
+
+        // Branding
+        if (!item.remove_branding) {
+             const branding = document.createElement('div');
+             branding.textContent = 'Powered by Trustabee';
+             branding.style.cssText = 'font-size: 10px; color: #999; margin-top: 15px; text-align: center; width: 100%;';
+             contentContainer.appendChild(branding);
+        }
+
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+
+        // Animate in
+        requestAnimationFrame(() => {
+            modal.style.opacity = '1';
+            content.style.transform = 'scale(1)';
+        });
+    }
+
+    // --- Widget Logic (Live Conversion) ---
 
     function createWidget() {
         if (document.getElementById(CONTAINER_ID)) return;
@@ -127,7 +572,7 @@ class WidgetController {
                 <p class="action-text"></p>
                 <div class="verification" style="display:none">
                     <span class="checkmark">&#x2713;</span>
-                    <span class="verified-text">Verified by TrustPilot</span>
+                    <span class="verified-text">Verified by Trustabee</span>
                 </div>
             </div>
         `;
@@ -180,24 +625,60 @@ class WidgetController {
         }, DISPLAY_DURATION_MS);
     }
 
-    function injectStyles() {
+    function injectStyles(config) {
+        let bottom = '20px';
+        let left = '20px';
+        let right = 'auto';
+        let bgColor = 'white';
+        let textColor = '#333';
+
+        if (config) {
+            if (config.position === 'bottom-right') {
+                left = 'auto';
+                right = '20px';
+            }
+            if (config.bg_color) bgColor = config.bg_color;
+            if (config.text_color) textColor = config.text_color;
+        }
+
         const style = document.createElement('style');
         style.innerHTML = `
-            .sales-notification-widget { position: fixed; bottom: 20px; left: 20px; z-index: 9999; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); padding: 10px; display: flex; align-items: center; width: 300px; opacity: 1; transform: translateX(0); transition: opacity 0.5s, transform 0.5s; font-family: sans-serif; }
-            .sales-notification-widget.hide { opacity: 0; transform: translateX(-150%); }
+            .sales-notification-widget {
+                position: fixed;
+                bottom: \${bottom};
+                left: \${left};
+                right: \${right};
+                z-index: 9999;
+                background: \${bgColor};
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                padding: 10px;
+                display: flex;
+                align-items: center;
+                width: 300px;
+                opacity: 1;
+                transform: translateX(0);
+                transition: opacity 0.5s, transform 0.5s;
+                font-family: sans-serif;
+                color: \${textColor};
+            }
+            .sales-notification-widget.hide {
+                opacity: 0;
+                transform: translateX(\${left === 'auto' ? '150%' : '-150%'});
+            }
             .sales-notification-widget .map-placeholder { width: 50px; height: 50px; background: #eee; border-radius: 4px; margin-right: 10px; flex-shrink: 0; overflow: hidden; }
             .sales-notification-widget .map-placeholder img { width: 100%; height: 100%; object-fit: cover; }
             .sales-notification-widget .content { display: flex; flex-direction: column; justify-content: center; flex-grow: 1; line-height: 1.2; }
-            .sales-notification-widget .name { font-weight: 700; color: #333; font-size: 14px; margin: 0; }
-            .sales-notification-widget .action-text { margin: 2px 0 5px 0; color: #555; font-size: 13px; }
+            .sales-notification-widget .name { font-weight: 700; color: inherit; font-size: 14px; margin: 0; }
+            .sales-notification-widget .action-text { margin: 2px 0 5px 0; color: inherit; opacity: 0.8; font-size: 13px; }
             .sales-notification-widget .verification { display: flex; align-items: center; font-size: 11px; color: #1a73e8; font-weight: 500; }
             .sales-notification-widget .checkmark { font-weight: bold; margin-right: 4px; }
         `;
         document.head.appendChild(style);
     }
 
-    function initWidget() {
-        injectStyles();
+    function initWidget(config) {
+        injectStyles(config);
         createWidget();
         startCycle();
     }
@@ -234,8 +715,26 @@ JS;
             return;
         }
 
-        // 1. Live Visitors
-        $stmt = $pdo->prepare("SELECT COUNT(DISTINCT visitor_id) as count FROM live_visitors WHERE widget_id = ? AND last_seen > (NOW() - INTERVAL 5 MINUTE)");
+        // Lazy Logging: Check if we need to take a snapshot
+        $this->logTrafficSnapshot($widget_id, $pdo);
+
+        // Fetch active coupons
+        $stmt = $pdo->prepare("SELECT * FROM coupons WHERE widget_id = ? AND active = 1");
+        $stmt->execute([$widget_id]);
+        $coupons = $stmt->fetchAll();
+
+        // Fetch active announcements
+        $stmt = $pdo->prepare("SELECT * FROM announcements WHERE widget_id = ? AND active = 1");
+        $stmt->execute([$widget_id]);
+        $announcements = $stmt->fetchAll();
+
+        // Fetch active videos
+        $stmt = $pdo->prepare("SELECT * FROM videos WHERE widget_id = ? AND active = 1");
+        $stmt->execute([$widget_id]);
+        $videos = $stmt->fetchAll();
+
+        // 1. Live Visitors (Active in last 30 minutes, distinct)
+        $stmt = $pdo->prepare("SELECT COUNT(DISTINCT visitor_id) as count FROM live_visitors WHERE widget_id = ? AND last_seen > (NOW() - INTERVAL 30 MINUTE)");
         $stmt->execute([$widget_id]);
         $live_count = $stmt->fetch()['count'];
 
@@ -244,36 +743,74 @@ JS;
         $stmt->execute([$widget_id]);
         $historical_count = $stmt->fetch()['count'];
 
-        // 3. Simulated Data
-        $stmt = $pdo->prepare("SELECT name, action_text as actionText, location, image_url FROM notifications WHERE widget_id = ? AND active = 1");
-        $stmt->execute([$widget_id]);
-        $simulated = $stmt->fetchAll();
-        foreach ($simulated as &$s) { $s['is_real'] = false; }
+        $notifications = [];
 
-        // 4. Real Data
-        $stmt = $pdo->prepare("SELECT * FROM events WHERE widget_id = ? AND type='form_submit' ORDER BY created_at DESC LIMIT 5");
-        $stmt->execute([$widget_id]);
-        $real_events = $stmt->fetchAll();
+        // Check if Live Conversion is enabled
+        $live_conversion_enabled = (bool)($widget['live_conversion_enabled'] ?? false);
+        $use_real = (bool)($widget['use_real_conversion'] ?? true);
+        $use_simulated = (bool)($widget['use_simulated_conversion'] ?? true);
 
-        $real = [];
-        foreach ($real_events as $ev) {
-            $real[] = [
-                'name' => 'A visitor',
-                'actionText' => 'Just signed up',
-                'is_real' => true
-            ];
+        if ($live_conversion_enabled) {
+            // 3. Simulated Data
+            if ($use_simulated) {
+                $stmt = $pdo->prepare("SELECT name, action_text as actionText, location, image_url FROM notifications WHERE widget_id = ? AND active = 1");
+                $stmt->execute([$widget_id]);
+                $simulated = $stmt->fetchAll();
+                foreach ($simulated as &$s) { $s['is_real'] = false; }
+                $notifications = array_merge($notifications, $simulated);
+            }
+
+            // 4. Real Data
+            if ($use_real) {
+                $stmt = $pdo->prepare("SELECT * FROM events WHERE widget_id = ? AND type='form_submit' ORDER BY created_at DESC LIMIT 5");
+                $stmt->execute([$widget_id]);
+                $real_events = $stmt->fetchAll();
+
+                $real = [];
+                foreach ($real_events as $ev) {
+                    $real[] = [
+                        'name' => 'A visitor',
+                        'actionText' => 'Just signed up',
+                        'is_real' => true
+                    ];
+                }
+                $notifications = array_merge($notifications, $real);
+            }
         }
 
-        $notifications = array_merge($real, $simulated);
+        $live_config = json_decode($widget['live_visitor_config'] ?? '{}', true);
 
         echo json_encode([
             'config' => [
-                'magical_detection' => (bool)$widget['magical_detection']
+                'magical_detection' => (bool)$widget['magical_detection'],
+                'live_visitor_enabled' => (bool)($widget['live_visitor_enabled'] ?? false),
+                'live_visitor_config' => $live_config
             ],
+            'coupons' => $coupons,
+            'announcements' => $announcements,
+            'videos' => $videos,
             'live_count' => $live_count,
             'historical_count' => $historical_count,
             'notifications' => $notifications
         ]);
+    }
+
+    private function logTrafficSnapshot($widget_id, $pdo) {
+        // Check for any snapshot in the last 5 minutes (to avoid race conditions/duplicates)
+        $stmt = $pdo->prepare("SELECT id FROM traffic_snapshots WHERE widget_id = ? AND created_at > (NOW() - INTERVAL 5 MINUTE) LIMIT 1");
+        $stmt->execute([$widget_id]);
+        $recent_exists = $stmt->fetchColumn();
+
+        if (!$recent_exists) {
+            // Take snapshot
+            // Count distinct visitors active in last 30 mins
+            $stmt = $pdo->prepare("SELECT COUNT(DISTINCT visitor_id) FROM live_visitors WHERE widget_id = ? AND last_seen > (NOW() - INTERVAL 30 MINUTE)");
+            $stmt->execute([$widget_id]);
+            $count = $stmt->fetchColumn();
+
+            $stmt = $pdo->prepare("INSERT INTO traffic_snapshots (widget_id, visitor_count, created_at) VALUES (?, ?, NOW())");
+            $stmt->execute([$widget_id, $count]);
+        }
     }
 
     public function heartbeat() {
@@ -312,6 +849,45 @@ JS;
         $pdo = Database::getInstance();
         $stmt = $pdo->prepare("INSERT INTO events (widget_id, type, payload, visitor_id, page_url) VALUES (?, ?, ?, ?, ?)");
         $stmt->execute([$widget_id, $type, $payload, $visitor_id, $page]);
+    }
+
+    public function trackCoupon() {
+        $this->addCors();
+        $widget_id = $_POST['w'] ?? 0;
+        $coupon_id = $_POST['cid'] ?? 0;
+        $type = $_POST['type'] ?? 'unknown';
+
+        if (!$widget_id || !$coupon_id) return;
+
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare("INSERT INTO coupon_analytics (coupon_id, event_type, created_at) VALUES (?, ?, NOW())");
+        $stmt->execute([$coupon_id, $type]);
+    }
+
+    public function trackAnnouncement() {
+        $this->addCors();
+        $widget_id = $_POST['w'] ?? 0;
+        $announcement_id = $_POST['aid'] ?? 0;
+        $type = $_POST['type'] ?? 'unknown';
+
+        if (!$widget_id || !$announcement_id) return;
+
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare("INSERT INTO announcement_analytics (announcement_id, event_type, created_at) VALUES (?, ?, NOW())");
+        $stmt->execute([$announcement_id, $type]);
+    }
+
+    public function trackVideo() {
+        $this->addCors();
+        $widget_id = $_POST['w'] ?? 0;
+        $video_id = $_POST['vid'] ?? 0;
+        $type = $_POST['type'] ?? 'unknown';
+
+        if (!$widget_id || !$video_id) return;
+
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare("INSERT INTO video_analytics (video_id, event_type, created_at) VALUES (?, ?, NOW())");
+        $stmt->execute([$video_id, $type]);
     }
 
     private function addCors() {
