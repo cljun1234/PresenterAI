@@ -25,11 +25,13 @@ class WidgetController {
     const COUPON_CONTAINER_ID = 'trustabee-coupon-modal';
     const ANNOUNCEMENT_CONTAINER_ID = 'trustabee-announcement-modal';
     const VIDEO_CONTAINER_ID = 'trustabee-video-modal';
+    const NEWSLETTER_CONTAINER_ID = 'trustabee-newsletter-modal';
 
     let data = [];
     let coupons = [];
     let announcements = [];
     let videos = [];
+    let newsletters = [];
     let currentIndex = 0;
     let widgetElement;
     let timerId;
@@ -57,6 +59,12 @@ class WidgetController {
             if (json.videos && json.videos.length > 0) {
                 videos = json.videos;
                 checkVideos();
+            }
+
+            // Store newsletters
+            if (json.newsletters && json.newsletters.length > 0) {
+                newsletters = json.newsletters;
+                checkNewsletters();
             }
 
             // Build queue
@@ -432,6 +440,127 @@ class WidgetController {
         trackVideoEvent(video.id, 'view');
     }
 
+    // --- Newsletter Logic ---
+
+    function checkNewsletters() {
+        for (const newsletter of newsletters) {
+            if (shouldShowItem(newsletter, 'newsletter')) {
+                setupTrigger(newsletter, showNewsletter);
+                return;
+            }
+        }
+    }
+
+    function showNewsletter(newsletter) {
+        const storageKey = `trustabee_newsletter_shown_\${newsletter.id}`;
+        localStorage.setItem(storageKey, new Date().getTime());
+
+        if (document.getElementById(NEWSLETTER_CONTAINER_ID)) return;
+
+        // Track View
+        const payload = new URLSearchParams();
+        payload.append('w', WIDGET_ID);
+        payload.append('nid', newsletter.id);
+        payload.append('type', 'view');
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon(`\${API_BASE}/track-newsletter`, payload);
+        } else {
+            fetch(`\${API_BASE}/track-newsletter`, { method: 'POST', body: payload });
+        }
+
+        createModal(NEWSLETTER_CONTAINER_ID, newsletter, (content) => {
+            // Form Container
+            const form = document.createElement('form');
+            form.style.marginTop = '15px';
+
+            // Name Field
+            if (newsletter.allow_name == 1) {
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.name = 'name';
+                nameInput.placeholder = 'Enter your full name...';
+                nameInput.required = true;
+                nameInput.style.cssText = 'width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;';
+                form.appendChild(nameInput);
+            }
+
+            // Email Field
+            const emailInput = document.createElement('input');
+            emailInput.type = 'email';
+            emailInput.name = 'email';
+            emailInput.placeholder = 'Enter your email address...';
+            emailInput.required = true;
+            emailInput.style.cssText = 'width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;';
+            form.appendChild(emailInput);
+
+            // Phone Field
+            if (newsletter.allow_phone == 1) {
+                const phoneInput = document.createElement('input');
+                phoneInput.type = 'tel';
+                phoneInput.name = 'phone';
+                phoneInput.placeholder = 'Enter your phone number...';
+                phoneInput.required = true;
+                phoneInput.style.cssText = 'width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;';
+                form.appendChild(phoneInput);
+            }
+
+            // Button
+            const btn = document.createElement('button');
+            btn.type = 'submit';
+            btn.textContent = newsletter.btn_text || 'Subscribe';
+            btn.style.cssText = `
+                background: #1a73e8; color: white; border: none;
+                padding: 12px 24px; font-size: 16px; border-radius: 6px;
+                cursor: pointer; width: 100%; font-weight: 600;
+                margin-top: 10px;
+            `;
+            form.appendChild(btn);
+
+            // Handle Submit
+            form.onsubmit = (e) => {
+                e.preventDefault();
+                btn.textContent = 'Processing...';
+                btn.disabled = true;
+
+                const formData = new FormData(form);
+                formData.append('w', WIDGET_ID);
+                formData.append('nid', newsletter.id);
+
+                fetch(`\${API_BASE}/submit-newsletter`, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(res => {
+                    if (res.success) {
+                        if (newsletter.success_action === 'redirect' && newsletter.redirect_url) {
+                            window.location.href = newsletter.redirect_url;
+                        } else if (newsletter.success_action === 'close') {
+                            const modal = document.getElementById(NEWSLETTER_CONTAINER_ID);
+                            if (modal) {
+                                modal.style.opacity = '0';
+                                setTimeout(() => modal.remove(), 300);
+                            }
+                        } else {
+                            // Show Message (replace form)
+                            form.innerHTML = `<div style="padding: 20px; font-size: 18px; color: green;">\${newsletter.success_message || 'Thanks for subscribing!'}</div>`;
+                        }
+                    } else {
+                        btn.textContent = 'Error. Try again.';
+                        btn.disabled = false;
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    btn.textContent = 'Error. Try again.';
+                    btn.disabled = false;
+                });
+            };
+
+            content.appendChild(form);
+        });
+    }
+
     // --- Generic Modal Builder ---
 
     function createModal(containerId, item, contentCallback) {
@@ -733,6 +862,11 @@ JS;
         $stmt->execute([$widget_id]);
         $videos = $stmt->fetchAll();
 
+        // Fetch active newsletters
+        $stmt = $pdo->prepare("SELECT * FROM newsletters WHERE widget_id = ? AND active = 1");
+        $stmt->execute([$widget_id]);
+        $newsletters = $stmt->fetchAll();
+
         // 1. Live Visitors (Active in last 30 minutes, distinct)
         $stmt = $pdo->prepare("SELECT COUNT(DISTINCT visitor_id) as count FROM live_visitors WHERE widget_id = ? AND last_seen > (NOW() - INTERVAL 30 MINUTE)");
         $stmt->execute([$widget_id]);
@@ -789,6 +923,7 @@ JS;
             'coupons' => $coupons,
             'announcements' => $announcements,
             'videos' => $videos,
+            'newsletters' => $newsletters,
             'live_count' => $live_count,
             'historical_count' => $historical_count,
             'notifications' => $notifications
@@ -888,6 +1023,72 @@ JS;
         $pdo = Database::getInstance();
         $stmt = $pdo->prepare("INSERT INTO video_analytics (video_id, event_type, created_at) VALUES (?, ?, NOW())");
         $stmt->execute([$video_id, $type]);
+    }
+
+    public function trackNewsletter() {
+        $this->addCors();
+        $widget_id = $_POST['w'] ?? 0;
+        $newsletter_id = $_POST['nid'] ?? 0;
+        $type = $_POST['type'] ?? 'unknown';
+
+        if (!$widget_id || !$newsletter_id) return;
+
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare("INSERT INTO newsletter_analytics (newsletter_id, event_type, created_at) VALUES (?, ?, NOW())");
+        $stmt->execute([$newsletter_id, $type]);
+    }
+
+    public function submitNewsletter() {
+        $this->addCors();
+        $widget_id = $_POST['w'] ?? 0;
+        $newsletter_id = $_POST['nid'] ?? 0;
+
+        $email = $_POST['email'] ?? '';
+        $name = $_POST['name'] ?? null;
+        $phone = $_POST['phone'] ?? null;
+
+        if (!$widget_id || !$newsletter_id || !$email) {
+             echo json_encode(['error' => 'Missing required fields']);
+             return;
+        }
+
+        $pdo = Database::getInstance();
+
+        // Save Lead
+        $stmt = $pdo->prepare("INSERT INTO newsletter_leads (newsletter_id, widget_id, email, name, phone, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
+        $stmt->execute([$newsletter_id, $widget_id, $email, $name, $phone]);
+
+        // Track 'submit' event
+        $stmt = $pdo->prepare("INSERT INTO newsletter_analytics (newsletter_id, event_type, created_at) VALUES (?, 'submit', NOW())");
+        $stmt->execute([$newsletter_id]);
+
+        // Webhook
+        $stmt = $pdo->prepare("SELECT webhook_url FROM newsletters WHERE id = ?");
+        $stmt->execute([$newsletter_id]);
+        $webhook_url = $stmt->fetchColumn();
+
+        if ($webhook_url) {
+             $data = [
+                 'widget_id' => $widget_id,
+                 'newsletter_id' => $newsletter_id,
+                 'email' => $email,
+                 'name' => $name,
+                 'phone' => $phone,
+                 'created_at' => date('Y-m-d H:i:s')
+             ];
+
+             // Fire and forget (or with short timeout)
+             $ch = curl_init($webhook_url);
+             curl_setopt($ch, CURLOPT_POST, 1);
+             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+             curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+             curl_setopt($ch, CURLOPT_TIMEOUT, 5); // 5 seconds timeout
+             curl_exec($ch);
+             curl_close($ch);
+        }
+
+        echo json_encode(['success' => true]);
     }
 
     private function addCors() {

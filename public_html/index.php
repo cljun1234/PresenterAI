@@ -45,6 +45,12 @@ $router->map('GET', '/campaigns/announcement/delete/[i:id]', 'AnnouncementContro
 $router->map('POST', '/campaigns/video/save', 'VideoController#save', 'video_save');
 $router->map('GET', '/campaigns/video/delete/[i:id]', 'VideoController#delete', 'video_delete');
 
+// Newsletters
+$router->map('POST', '/campaigns/newsletter/save', 'NewsletterController#save', 'newsletter_save');
+$router->map('GET', '/campaigns/newsletter/delete/[i:id]', 'NewsletterController#delete', 'newsletter_delete');
+$router->map('GET', '/campaigns/newsletter/leads/[i:id]', 'NewsletterController#leads', 'newsletter_leads');
+$router->map('GET', '/campaigns/newsletter/export/[i:id]', 'NewsletterController#export_leads', 'newsletter_export');
+
 // API / Widget
 $router->map('GET', '/api/widget.js', 'WidgetController#serveScript', 'widget_js');
 $router->map('GET', '/api/data', 'WidgetController#getData', 'widget_data');
@@ -53,6 +59,8 @@ $router->map('POST', '/api/track', 'WidgetController#trackEvent', 'widget_track'
 $router->map('POST', '/api/track-coupon', 'WidgetController#trackCoupon', 'widget_track_coupon');
 $router->map('POST', '/api/track-announcement', 'WidgetController#trackAnnouncement', 'widget_track_announcement');
 $router->map('POST', '/api/track-video', 'WidgetController#trackVideo', 'widget_track_video');
+$router->map('POST', '/api/track-newsletter', 'WidgetController#trackNewsletter', 'widget_track_newsletter');
+$router->map('POST', '/api/submit-newsletter', 'WidgetController#submitNewsletter', 'widget_submit_newsletter');
 
 // Match request
 $match = $router->match();

@@ -165,3 +165,52 @@ CREATE TABLE IF NOT EXISTS video_analytics (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
 );
+
+-- Newsletters Table
+CREATE TABLE IF NOT EXISTS newsletters (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    widget_id INT NOT NULL,
+    title VARCHAR(255) DEFAULT 'Join Our Newsletter',
+    description TEXT,
+    image_url VARCHAR(255) DEFAULT NULL,
+    image_style VARCHAR(50) DEFAULT 'top', -- 'top', 'left', 'right', 'background'
+    bg_color VARCHAR(50) DEFAULT '#ffffff',
+    text_color VARCHAR(50) DEFAULT '#333333',
+    btn_text VARCHAR(100) DEFAULT 'Subscribe',
+    allow_name BOOLEAN DEFAULT 0,
+    allow_phone BOOLEAN DEFAULT 0,
+    webhook_url VARCHAR(255) DEFAULT NULL,
+    success_action VARCHAR(50) DEFAULT 'message', -- 'message', 'redirect', 'close'
+    success_message TEXT,
+    redirect_url VARCHAR(255) DEFAULT NULL,
+    trigger_type VARCHAR(50) DEFAULT 'delay',
+    trigger_delay INT DEFAULT 0,
+    frequency VARCHAR(50) DEFAULT 'every_load',
+    match_url VARCHAR(255) DEFAULT NULL,
+    remove_branding BOOLEAN DEFAULT 0,
+    active BOOLEAN DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (widget_id) REFERENCES widgets(id) ON DELETE CASCADE
+);
+
+-- Newsletter Leads
+CREATE TABLE IF NOT EXISTS newsletter_leads (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    newsletter_id INT NOT NULL,
+    widget_id INT NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    name VARCHAR(255) DEFAULT NULL,
+    phone VARCHAR(255) DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (newsletter_id) REFERENCES newsletters(id) ON DELETE CASCADE,
+    FOREIGN KEY (widget_id) REFERENCES widgets(id) ON DELETE CASCADE
+);
+
+-- Newsletter Analytics
+CREATE TABLE IF NOT EXISTS newsletter_analytics (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    newsletter_id INT NOT NULL,
+    event_type VARCHAR(50) NOT NULL, -- 'view', 'submit'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (newsletter_id) REFERENCES newsletters(id) ON DELETE CASCADE
+);
