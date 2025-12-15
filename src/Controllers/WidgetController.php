@@ -24,10 +24,12 @@ class WidgetController {
     const CONTAINER_ID = 'trustabee-widget';
     const COUPON_CONTAINER_ID = 'trustabee-coupon-modal';
     const ANNOUNCEMENT_CONTAINER_ID = 'trustabee-announcement-modal';
+    const VIDEO_CONTAINER_ID = 'trustabee-video-modal';
 
     let data = [];
     let coupons = [];
     let announcements = [];
+    let videos = [];
     let currentIndex = 0;
     let widgetElement;
     let timerId;
@@ -49,6 +51,12 @@ class WidgetController {
             if (json.announcements && json.announcements.length > 0) {
                 announcements = json.announcements;
                 checkAnnouncements();
+            }
+
+            // Store videos
+            if (json.videos && json.videos.length > 0) {
+                videos = json.videos;
+                checkVideos();
             }
 
             // Build queue
@@ -152,6 +160,19 @@ class WidgetController {
             navigator.sendBeacon(`\${API_BASE}/track-announcement`, payload);
         } else {
             fetch(`\${API_BASE}/track-announcement`, { method: 'POST', body: payload });
+        }
+    }
+
+    function trackVideoEvent(videoId, eventType) {
+        const payload = new URLSearchParams();
+        payload.append('w', WIDGET_ID);
+        payload.append('vid', videoId);
+        payload.append('type', eventType);
+
+        if (navigator.sendBeacon) {
+            navigator.sendBeacon(`\${API_BASE}/track-video`, payload);
+        } else {
+            fetch(`\${API_BASE}/track-video`, { method: 'POST', body: payload });
         }
     }
 
@@ -301,6 +322,115 @@ class WidgetController {
         trackAnnouncementEvent(announcement.id, 'view');
     }
 
+    // --- Video Logic ---
+
+    function checkVideos() {
+        for (const video of videos) {
+            if (shouldShowItem(video, 'video')) {
+                setupTrigger(video, showVideo);
+                return;
+            }
+        }
+    }
+
+    function createVideoElement(url) {
+        if (url.includes('youtube.com') || url.includes('youtu.be')) {
+            let videoId = '';
+            if (url.includes('youtu.be')) {
+                videoId = url.split('/').pop();
+            } else {
+                const params = new URLSearchParams(new URL(url).search);
+                videoId = params.get('v');
+            }
+            if (videoId) {
+                const iframe = document.createElement('iframe');
+                iframe.width = "100%";
+                iframe.height = "220";
+                iframe.src = `https://www.youtube.com/embed/\${videoId}?autoplay=1&mute=1`;
+                iframe.frameBorder = "0";
+                iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+                iframe.allowFullscreen = true;
+                iframe.style.borderRadius = "8px";
+                iframe.style.marginBottom = "20px";
+                return iframe;
+            }
+        } else if (url.includes('vimeo.com')) {
+            const videoId = url.split('/').pop();
+            if (videoId) {
+                const iframe = document.createElement('iframe');
+                iframe.src = `https://player.vimeo.com/video/\${videoId}?autoplay=1&muted=1`;
+                iframe.width = "100%";
+                iframe.height = "220";
+                iframe.frameBorder = "0";
+                iframe.allow = "autoplay; fullscreen";
+                iframe.allowFullscreen = true;
+                iframe.style.borderRadius = "8px";
+                iframe.style.marginBottom = "20px";
+                return iframe;
+            }
+        } else {
+            // Hosted video
+            const videoEl = document.createElement('video');
+            videoEl.src = url;
+            videoEl.width = "100%"; // Note: width is attribute here, or style
+            videoEl.style.width = "100%";
+            videoEl.height = 220; // attribute
+            videoEl.autoplay = true;
+            videoEl.muted = true;
+            videoEl.controls = true;
+            videoEl.playsInline = true;
+            videoEl.style.borderRadius = "8px";
+            videoEl.style.marginBottom = "20px";
+            videoEl.style.objectFit = "cover";
+            return videoEl;
+        }
+        return null;
+    }
+
+    function showVideo(video) {
+        const storageKey = `trustabee_video_shown_\${video.id}`;
+        localStorage.setItem(storageKey, new Date().getTime());
+
+        if (document.getElementById(VIDEO_CONTAINER_ID)) return;
+
+        createModal(VIDEO_CONTAINER_ID, video, (content) => {
+            // Video Embed
+            if (video.video_url) {
+                const videoEl = createVideoElement(video.video_url);
+                if (videoEl) {
+                    content.appendChild(videoEl);
+                }
+            }
+
+            // Button
+            const btn = document.createElement('button');
+            btn.textContent = video.btn_text || 'Learn More';
+            btn.style.cssText = `
+                background: #1a73e8; color: white; border: none;
+                padding: 12px 24px; font-size: 16px; border-radius: 6px;
+                cursor: pointer; width: 100%; font-weight: 600;
+            `;
+
+            btn.onclick = () => {
+                trackVideoEvent(video.id, 'click');
+                if (video.btn_action === 'close') {
+                     const modal = document.getElementById(VIDEO_CONTAINER_ID);
+                     if (modal) {
+                         modal.style.opacity = '0';
+                         setTimeout(() => modal.remove(), 300);
+                     }
+                } else {
+                    // Link
+                    if (video.btn_link) {
+                         window.location.href = video.btn_link;
+                    }
+                }
+            };
+            content.appendChild(btn);
+        });
+
+        trackVideoEvent(video.id, 'view');
+    }
 
     // --- Generic Modal Builder ---
 
@@ -598,6 +728,11 @@ JS;
         $stmt->execute([$widget_id]);
         $announcements = $stmt->fetchAll();
 
+        // Fetch active videos
+        $stmt = $pdo->prepare("SELECT * FROM videos WHERE widget_id = ? AND active = 1");
+        $stmt->execute([$widget_id]);
+        $videos = $stmt->fetchAll();
+
         // 1. Live Visitors (Active in last 30 minutes, distinct)
         $stmt = $pdo->prepare("SELECT COUNT(DISTINCT visitor_id) as count FROM live_visitors WHERE widget_id = ? AND last_seen > (NOW() - INTERVAL 30 MINUTE)");
         $stmt->execute([$widget_id]);
@@ -653,6 +788,7 @@ JS;
             ],
             'coupons' => $coupons,
             'announcements' => $announcements,
+            'videos' => $videos,
             'live_count' => $live_count,
             'historical_count' => $historical_count,
             'notifications' => $notifications
@@ -739,6 +875,19 @@ JS;
         $pdo = Database::getInstance();
         $stmt = $pdo->prepare("INSERT INTO announcement_analytics (announcement_id, event_type, created_at) VALUES (?, ?, NOW())");
         $stmt->execute([$announcement_id, $type]);
+    }
+
+    public function trackVideo() {
+        $this->addCors();
+        $widget_id = $_POST['w'] ?? 0;
+        $video_id = $_POST['vid'] ?? 0;
+        $type = $_POST['type'] ?? 'unknown';
+
+        if (!$widget_id || !$video_id) return;
+
+        $pdo = Database::getInstance();
+        $stmt = $pdo->prepare("INSERT INTO video_analytics (video_id, event_type, created_at) VALUES (?, ?, NOW())");
+        $stmt->execute([$video_id, $type]);
     }
 
     private function addCors() {

@@ -134,3 +134,34 @@ CREATE TABLE IF NOT EXISTS announcement_analytics (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (announcement_id) REFERENCES announcements(id) ON DELETE CASCADE
 );
+
+-- Videos Table
+CREATE TABLE IF NOT EXISTS videos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    widget_id INT NOT NULL,
+    title VARCHAR(255) DEFAULT 'Check this out',
+    message TEXT,
+    video_url VARCHAR(255) DEFAULT NULL,
+    btn_text VARCHAR(100) DEFAULT 'Learn More',
+    btn_action VARCHAR(50) DEFAULT 'link', -- 'link' or 'close'
+    btn_link VARCHAR(255) DEFAULT NULL,
+    remove_branding BOOLEAN DEFAULT 0,
+    bg_color VARCHAR(50) DEFAULT '#ffffff',
+    text_color VARCHAR(50) DEFAULT '#333333',
+    trigger_type VARCHAR(50) DEFAULT 'delay',
+    trigger_delay INT DEFAULT 0,
+    frequency VARCHAR(50) DEFAULT 'every_load',
+    match_url VARCHAR(255) DEFAULT NULL,
+    active BOOLEAN DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (widget_id) REFERENCES widgets(id) ON DELETE CASCADE
+);
+
+-- Video Analytics
+CREATE TABLE IF NOT EXISTS video_analytics (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    video_id INT NOT NULL,
+    event_type VARCHAR(50) NOT NULL, -- 'view', 'click'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE
+);

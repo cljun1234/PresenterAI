@@ -130,6 +130,11 @@ class DashboardController {
              $ac = new AnnouncementController();
              $ac->index($widget['id']);
 
+        } elseif ($type === 'video') {
+             require_once __DIR__ . '/VideoController.php';
+             $vc = new VideoController();
+             $vc->index($widget['id']);
+
         } else {
             // Generic placeholder
             $campaignType = $type;
