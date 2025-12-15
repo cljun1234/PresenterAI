@@ -135,6 +135,11 @@ class DashboardController {
              $vc = new VideoController();
              $vc->index($widget['id']);
 
+        } elseif ($type === 'newsletter') {
+             require_once __DIR__ . '/NewsletterController.php';
+             $nc = new NewsletterController();
+             $nc->index($widget['id']);
+
         } else {
             // Generic placeholder
             $campaignType = $type;
