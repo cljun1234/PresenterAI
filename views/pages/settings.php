@@ -21,9 +21,9 @@
         <h1>Settings</h1>
 
         <div class="card">
-            <form action="/widget/save" method="POST">
+            <form action="/domain/save" method="POST">
                 <label for="domain">Allowed Domain</label>
-                <input type="text" id="domain" name="domain" value="<?php echo htmlspecialchars($widget['domain'] ?? ''); ?>" placeholder="example.com">
+                <input type="text" id="domain" name="domain" value="<?php echo htmlspecialchars($domain['domain'] ?? ''); ?>" placeholder="example.com">
 
                 <button type="submit">Save Settings</button>
             </form>

@@ -2,7 +2,7 @@
 
 class DashboardController {
 
-    private function getWidgetAndUser() {
+    private function getDomainAndUser() {
         if (!isset($_SESSION['user_id'])) {
             header('Location: /login');
             exit;
@@ -11,25 +11,25 @@ class DashboardController {
         $pdo = Database::getInstance();
         $user_id = $_SESSION['user_id'];
 
-        // Fetch widget (domain configuration)
-        $stmt = $pdo->prepare("SELECT * FROM widgets WHERE user_id = ? LIMIT 1");
+        // Fetch configured domain
+        $stmt = $pdo->prepare("SELECT * FROM domains WHERE user_id = ? LIMIT 1");
         $stmt->execute([$user_id]);
-        $widget = $stmt->fetch();
+        $domain = $stmt->fetch();
 
-        return [$pdo, $user_id, $widget];
+        return [$pdo, $user_id, $domain];
     }
 
     public function index() {
-        list($pdo, $user_id, $widget) = $this->getWidgetAndUser();
+        list($pdo, $user_id, $domain) = $this->getDomainAndUser();
         require_once __DIR__ . '/../../views/pages/home.php';
     }
 
     public function settings() {
-        list($pdo, $user_id, $widget) = $this->getWidgetAndUser();
+        list($pdo, $user_id, $domain) = $this->getDomainAndUser();
         require_once __DIR__ . '/../../views/pages/settings.php';
     }
 
-    public function saveConfig() {
+    public function saveDomain() {
          if (!isset($_SESSION['user_id'])) {
             header('Location: /login');
             exit;
@@ -38,22 +38,18 @@ class DashboardController {
         $pdo = Database::getInstance();
         $user_id = $_SESSION['user_id'];
 
-        // Example: Saving domain or other settings
-        // For now, we just redirect back as we stripped specific settings logic
-        // But let's assume we might want to update the domain in the future.
+        $domain_name = $_POST['domain'] ?? '';
 
-        $domain = $_POST['domain'] ?? '';
-
-        if ($domain) {
-             // Check if widget exists
-             $stmt = $pdo->prepare("SELECT id FROM widgets WHERE user_id = ?");
+        if ($domain_name) {
+             // Check if domain config exists
+             $stmt = $pdo->prepare("SELECT id FROM domains WHERE user_id = ?");
              $stmt->execute([$user_id]);
              if ($stmt->fetch()) {
-                 $stmt = $pdo->prepare("UPDATE widgets SET domain = ? WHERE user_id = ?");
-                 $stmt->execute([$domain, $user_id]);
+                 $stmt = $pdo->prepare("UPDATE domains SET domain = ? WHERE user_id = ?");
+                 $stmt->execute([$domain_name, $user_id]);
              } else {
-                 $stmt = $pdo->prepare("INSERT INTO widgets (user_id, domain) VALUES (?, ?)");
-                 $stmt->execute([$user_id, $domain]);
+                 $stmt = $pdo->prepare("INSERT INTO domains (user_id, domain) VALUES (?, ?)");
+                 $stmt->execute([$user_id, $domain_name]);
              }
         }
 

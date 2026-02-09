@@ -6,12 +6,11 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Widgets (Configuration for a domain)
-CREATE TABLE IF NOT EXISTS widgets (
+-- Domains (Allowed domains for users)
+CREATE TABLE IF NOT EXISTS domains (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     domain VARCHAR(255) NOT NULL,
-    name VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

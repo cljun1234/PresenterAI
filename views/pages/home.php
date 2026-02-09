@@ -19,8 +19,8 @@
         <div class="card">
             <h2>Welcome</h2>
             <p>You are logged in.</p>
-            <?php if ($widget): ?>
-                <p>Your configured domain: <strong><?php echo htmlspecialchars($widget['domain']); ?></strong></p>
+            <?php if ($domain): ?>
+                <p>Your configured domain: <strong><?php echo htmlspecialchars($domain['domain']); ?></strong></p>
             <?php else: ?>
                 <p>No domain configured yet. Go to <a href="/settings">Settings</a>.</p>
             <?php endif; ?>
