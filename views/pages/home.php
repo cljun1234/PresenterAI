@@ -1,74 +1,32 @@
-<?php
-$activePage = 'home';
-$pageTitle = 'Home';
-require_once __DIR__ . '/../layouts/header.php';
-?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 0; background: #f4f6f8; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h1 { margin-top: 0; }
+    </style>
+</head>
+<body>
+    <?php require_once __DIR__ . '/../layouts/header.php'; ?>
 
-<div class="row" style="display: flex; gap: 20px; flex-wrap: wrap;">
-    <!-- Left Column: Live Visitor Count -->
-    <div style="flex: 1; min-width: 300px;">
-        <div class="card" style="height: 100%; display: flex; flex-direction: column;">
-            <h2>Live Status</h2>
-            <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px;">
-                <div style="font-size: 5rem; font-weight: 800; color: var(--primary-color); line-height: 1; margin-bottom: 10px;">
-                    <?php echo $current_live ?? 0; ?>
-                </div>
-                <div class="text-muted" style="font-size: 1.1rem; font-weight: 500;">Active Visitors</div>
-                <div class="text-muted" style="font-size: 0.85rem; margin-top: 5px;">(Last 30 Minutes)</div>
-            </div>
+    <div class="container">
+        <h1>Dashboard</h1>
+
+        <div class="card">
+            <h2>Welcome</h2>
+            <p>You are logged in.</p>
+            <?php if ($widget): ?>
+                <p>Your configured domain: <strong><?php echo htmlspecialchars($widget['domain']); ?></strong></p>
+            <?php else: ?>
+                <p>No domain configured yet. Go to <a href="/settings">Settings</a>.</p>
+            <?php endif; ?>
         </div>
     </div>
 
-    <!-- Right Column: Visitor Trend Graph -->
-    <div style="flex: 2; min-width: 400px;">
-        <div class="card" style="height: 100%;">
-            <h2>Visitor Trend (Last 24 Hours)</h2>
-            <div style="position: relative; height: 300px; width: 100%;">
-                <canvas id="homeVisitorChart"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="card" style="margin-top: 20px;">
-    <h2>Quick Start</h2>
-    <p>Use the <strong>Campaigns</strong> menu on the left to manage your widgets and notifications.</p>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-    const ctxHome = document.getElementById('homeVisitorChart').getContext('2d');
-    const homeVisitorChart = new Chart(ctxHome, {
-        type: 'bar',
-        data: {
-            labels: <?php echo json_encode($labels ?? []); ?>,
-            datasets: [{
-                label: 'Peak Visitors (per Hour)',
-                data: <?php echo json_encode($counts ?? []); ?>,
-                backgroundColor: 'rgba(0, 132, 255, 0.6)',
-                borderColor: 'rgba(0, 132, 255, 1)',
-                borderWidth: 1,
-                borderRadius: 4,
-                barPercentage: 0.6
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { precision: 0 }
-                },
-                x: {
-                    grid: { display: false }
-                }
-            },
-            plugins: {
-                legend: { display: false }
-            }
-        }
-    });
-</script>
-
-<?php require_once __DIR__ . '/../layouts/footer.php'; ?>
+    <?php require_once __DIR__ . '/../layouts/footer.php'; ?>
+</body>
+</html>

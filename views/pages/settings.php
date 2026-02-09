@@ -1,48 +1,35 @@
-<?php
-$activePage = 'settings';
-$pageTitle = 'Settings';
-require_once __DIR__ . '/../layouts/header.php';
-?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Settings</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 0; background: #f4f6f8; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h1 { margin-top: 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; margin-bottom: 15px; }
+        button { background: #1a73e8; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #1557b0; }
+    </style>
+</head>
+<body>
+    <?php require_once __DIR__ . '/../layouts/header.php'; ?>
 
-<!-- Installation -->
-<div class="card">
-    <h2>Installation</h2>
-    <p>Copy and paste this code into the <code>&lt;head&gt;</code> of your website.</p>
-    <?php
-        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-        $host = $_SERVER['HTTP_HOST'];
-        $scriptUrl = $protocol . $host . '/api/widget.js?w=' . $widget['id'];
-    ?>
-    <textarea class="code-block" readonly><script src="<?php echo $scriptUrl; ?>"></script></textarea>
-</div>
+    <div class="container">
+        <h1>Settings</h1>
 
-<!-- Configuration -->
-<div class="card">
-    <h2>Configuration</h2>
-    <form action="/widget/save" method="POST">
-        <div class="form-group toggle">
-            <label style="display: flex; align-items: center; cursor: pointer;">
-                <input type="checkbox" name="magical_detection" value="1" <?php if($widget['magical_detection']) echo 'checked'; ?> style="width: auto; margin-right: 10px;">
-                Enable "Magical Detection" (Auto-capture form submissions)
-            </label>
+        <div class="card">
+            <form action="/widget/save" method="POST">
+                <label for="domain">Allowed Domain</label>
+                <input type="text" id="domain" name="domain" value="<?php echo htmlspecialchars($widget['domain'] ?? ''); ?>" placeholder="example.com">
+
+                <button type="submit">Save Settings</button>
+            </form>
         </div>
+    </div>
 
-        <div class="form-group" style="margin-top: 20px;">
-            <label>Timezone</label>
-            <select name="timezone" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
-                <?php
-                $timezones = DateTimeZone::listIdentifiers();
-                $currentTz = $widget['timezone'] ?? 'UTC';
-                foreach ($timezones as $tz) {
-                    $selected = ($tz == $currentTz) ? 'selected' : '';
-                    echo "<option value=\"$tz\" $selected>$tz</option>";
-                }
-                ?>
-            </select>
-        </div>
-
-        <button type="submit" class="btn">Save Settings</button>
-    </form>
-</div>
-
-<?php require_once __DIR__ . '/../layouts/footer.php'; ?>
+    <?php require_once __DIR__ . '/../layouts/footer.php'; ?>
+</body>
+</html>
