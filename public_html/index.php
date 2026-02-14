@@ -1,4 +1,5 @@
 <?php
+session_save_path(__DIR__ . '/../sessions');
 session_start();
 
 require_once __DIR__ . '/../src/AltoRouter.php';
@@ -25,6 +26,7 @@ $router->map('GET', '/logout', 'AuthController#logout', 'logout');
 
 // Dashboard
 $router->map('GET', '/', 'DashboardController#index', 'dashboard');
+$router->map('GET', '/create', 'DashboardController#create', 'create');
 
 // Match request
 $match = $router->match();
