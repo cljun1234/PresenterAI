@@ -25,8 +25,6 @@ $router->map('GET', '/logout', 'AuthController#logout', 'logout');
 
 // Dashboard
 $router->map('GET', '/', 'DashboardController#index', 'dashboard');
-$router->map('GET', '/settings', 'DashboardController#settings', 'settings');
-$router->map('POST', '/domain/save', 'DashboardController#saveDomain', 'save_domain');
 
 // Match request
 $match = $router->match();

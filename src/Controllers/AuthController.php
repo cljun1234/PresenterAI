@@ -27,10 +27,6 @@ class AuthController {
                 $user_id = $pdo->lastInsertId();
                 $_SESSION['user_id'] = $user_id;
 
-                // Create default widget for user
-                $stmt = $pdo->prepare("INSERT INTO widgets (user_id, domain, name) VALUES (?, ?, ?)");
-                $stmt->execute([$user_id, 'example.com', 'My First Widget']);
-
                 header('Location: /');
                 exit;
             }
