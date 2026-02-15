@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gamma Interface - Dashboard</title>
+    <title>Gamma Interface - Themes</title>
     <style>
         :root {
             --bg-color: #1A1A1A;
@@ -106,7 +106,7 @@
         .top-bar {
             padding: 15px 30px;
             display: flex;
-            justify-content: flex-end; /* Just user menu for now */
+            justify-content: flex-end;
             align-items: center;
         }
 
@@ -185,7 +185,7 @@
 
         .card-preview {
             height: 150px;
-            background-color: #333; /* Placeholder for thumbnail */
+            background-color: #333;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -225,13 +225,13 @@
             </button>
         </a>
 
-        <a href="/" class="nav-item active">
+        <a href="/" class="nav-item">
             <span>🏠</span> Home
         </a>
         <a href="/templates" class="nav-item">
             <span>📄</span> Templates
         </a>
-        <a href="/themes" class="nav-item">
+        <a href="/themes" class="nav-item active">
             <span>🎨</span> Themes
         </a>
         <a href="/fonts" class="nav-item">
@@ -255,21 +255,32 @@
 
         <div class="dashboard-container">
             <div class="section-header">
-                <div class="section-title">Recently viewed</div>
+                <div class="section-title">Themes</div>
             </div>
 
             <div class="grid">
-                <?php foreach ($presentations as $ppt): ?>
-                    <a href="#" class="presentation-card">
-                        <div class="card-preview">
-                            🖼️
-                        </div>
-                        <div class="card-info">
-                            <div class="ppt-title"><?php echo htmlspecialchars($ppt['title']); ?></div>
-                            <div class="ppt-meta">Edited <?php echo htmlspecialchars($ppt['created_at']); ?></div>
-                        </div>
-                    </a>
-                <?php endforeach; ?>
+                 <!-- Placeholder Themes -->
+                 <div class="presentation-card">
+                    <div class="card-preview" style="background: #2c3e50;">🎨</div>
+                    <div class="card-info">
+                        <div class="ppt-title">Midnight Blue</div>
+                        <div class="ppt-meta">Theme</div>
+                    </div>
+                </div>
+                <div class="presentation-card">
+                    <div class="card-preview" style="background: #e74c3c;">🎨</div>
+                    <div class="card-info">
+                        <div class="ppt-title">Coral Sunset</div>
+                        <div class="ppt-meta">Theme</div>
+                    </div>
+                </div>
+                 <div class="presentation-card">
+                    <div class="card-preview" style="background: #27ae60;">🎨</div>
+                    <div class="card-info">
+                        <div class="ppt-title">Forest Green</div>
+                        <div class="ppt-meta">Theme</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

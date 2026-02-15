@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gamma Interface - Dashboard</title>
+    <title>Gamma Interface - Custom Fonts</title>
     <style>
         :root {
             --bg-color: #1A1A1A;
@@ -106,7 +106,7 @@
         .top-bar {
             padding: 15px 30px;
             display: flex;
-            justify-content: flex-end; /* Just user menu for now */
+            justify-content: flex-end;
             align-items: center;
         }
 
@@ -159,55 +159,17 @@
             font-weight: 600;
         }
 
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
-        }
-
-        .presentation-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            overflow: hidden;
-            transition: transform 0.2s, box-shadow 0.2s;
+        .upload-area {
+            border: 2px dashed #444;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
             cursor: pointer;
-            text-decoration: none;
-            color: inherit;
-            display: flex;
-            flex-direction: column;
+            transition: border-color 0.2s;
         }
 
-        .presentation-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-
-        .card-preview {
-            height: 150px;
-            background-color: #333; /* Placeholder for thumbnail */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #555;
-            font-size: 2rem;
-        }
-
-        .card-info {
-            padding: 15px;
-        }
-
-        .ppt-title {
-            font-weight: 600;
-            margin-bottom: 5px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .ppt-meta {
-            font-size: 0.8rem;
-            color: #888;
+        .upload-area:hover {
+            border-color: var(--accent-color);
         }
 
     </style>
@@ -225,7 +187,7 @@
             </button>
         </a>
 
-        <a href="/" class="nav-item active">
+        <a href="/" class="nav-item">
             <span>🏠</span> Home
         </a>
         <a href="/templates" class="nav-item">
@@ -234,7 +196,7 @@
         <a href="/themes" class="nav-item">
             <span>🎨</span> Themes
         </a>
-        <a href="/fonts" class="nav-item">
+        <a href="/fonts" class="nav-item active">
             <span>Aa</span> Custom Fonts
         </a>
 
@@ -255,21 +217,12 @@
 
         <div class="dashboard-container">
             <div class="section-header">
-                <div class="section-title">Recently viewed</div>
+                <div class="section-title">Custom Fonts</div>
             </div>
 
-            <div class="grid">
-                <?php foreach ($presentations as $ppt): ?>
-                    <a href="#" class="presentation-card">
-                        <div class="card-preview">
-                            🖼️
-                        </div>
-                        <div class="card-info">
-                            <div class="ppt-title"><?php echo htmlspecialchars($ppt['title']); ?></div>
-                            <div class="ppt-meta">Edited <?php echo htmlspecialchars($ppt['created_at']); ?></div>
-                        </div>
-                    </a>
-                <?php endforeach; ?>
+            <div class="upload-area">
+               <div style="font-size: 2rem; margin-bottom: 10px;">⬆️</div>
+               <div>Upload your font file (TTF, OTF)</div>
             </div>
         </div>
     </div>
