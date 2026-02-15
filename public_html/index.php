@@ -26,6 +26,10 @@ $router->map('GET', '/logout', 'AuthController#logout', 'logout');
 // Dashboard
 $router->map('GET', '/', 'DashboardController#index', 'dashboard');
 $router->map('GET', '/create', 'DashboardController#create', 'create');
+$router->map('GET', '/templates', 'DashboardController#templates', 'templates');
+$router->map('GET', '/themes', 'DashboardController#themes', 'themes');
+$router->map('GET', '/fonts', 'DashboardController#fonts', 'fonts');
+$router->map('GET', '/trash', 'DashboardController#trash', 'trash');
 
 // Match request
 $match = $router->match();

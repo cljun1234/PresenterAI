@@ -208,19 +208,19 @@
         <a href="/" class="nav-item active">
             <span>🏠</span> Home
         </a>
-        <a href="#" class="nav-item">
+        <a href="/templates" class="nav-item">
             <span>📄</span> Templates
         </a>
-        <a href="#" class="nav-item">
+        <a href="/themes" class="nav-item">
             <span>🎨</span> Themes
         </a>
-        <a href="#" class="nav-item">
+        <a href="/fonts" class="nav-item">
             <span>Aa</span> Custom Fonts
         </a>
 
         <div style="flex-grow: 1;"></div>
 
-        <a href="#" class="nav-item">
+        <a href="/trash" class="nav-item">
             <span>🗑️</span> Trash
         </a>
     </div>

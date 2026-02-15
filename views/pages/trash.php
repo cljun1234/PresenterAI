@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gamma Interface - Dashboard</title>
+    <title>Gamma Interface - Trash</title>
     <style>
         :root {
             --bg-color: #1A1A1A;
@@ -106,7 +106,7 @@
         .top-bar {
             padding: 15px 30px;
             display: flex;
-            justify-content: flex-end; /* Just user menu for now */
+            justify-content: flex-end;
             align-items: center;
         }
 
@@ -140,74 +140,13 @@
 
         /* Content Area */
         .dashboard-container {
-            padding: 40px;
-            max-width: 1200px;
-            margin: 0 auto;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .section-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
-        }
-
-        .presentation-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            overflow: hidden;
-            transition: transform 0.2s, box-shadow 0.2s;
-            cursor: pointer;
-            text-decoration: none;
-            color: inherit;
+            flex-grow: 1;
             display: flex;
             flex-direction: column;
-        }
-
-        .presentation-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-
-        .card-preview {
-            height: 150px;
-            background-color: #333; /* Placeholder for thumbnail */
-            display: flex;
-            align-items: center;
             justify-content: center;
+            align-items: center;
             color: #555;
-            font-size: 2rem;
-        }
-
-        .card-info {
-            padding: 15px;
-        }
-
-        .ppt-title {
-            font-weight: 600;
-            margin-bottom: 5px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .ppt-meta {
-            font-size: 0.8rem;
-            color: #888;
+            padding-bottom: 100px;
         }
 
     </style>
@@ -225,7 +164,7 @@
             </button>
         </a>
 
-        <a href="/" class="nav-item active">
+        <a href="/" class="nav-item">
             <span>🏠</span> Home
         </a>
         <a href="/templates" class="nav-item">
@@ -240,7 +179,7 @@
 
         <div style="flex-grow: 1;"></div>
 
-        <a href="/trash" class="nav-item">
+        <a href="/trash" class="nav-item active">
             <span>🗑️</span> Trash
         </a>
     </div>
@@ -254,23 +193,8 @@
         </div>
 
         <div class="dashboard-container">
-            <div class="section-header">
-                <div class="section-title">Recently viewed</div>
-            </div>
-
-            <div class="grid">
-                <?php foreach ($presentations as $ppt): ?>
-                    <a href="#" class="presentation-card">
-                        <div class="card-preview">
-                            🖼️
-                        </div>
-                        <div class="card-info">
-                            <div class="ppt-title"><?php echo htmlspecialchars($ppt['title']); ?></div>
-                            <div class="ppt-meta">Edited <?php echo htmlspecialchars($ppt['created_at']); ?></div>
-                        </div>
-                    </a>
-                <?php endforeach; ?>
-            </div>
+            <div style="font-size: 3rem; margin-bottom: 20px;">🗑️</div>
+            <div>Your trash is empty.</div>
         </div>
     </div>
 

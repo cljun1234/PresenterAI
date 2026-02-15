@@ -29,4 +29,36 @@ class DashboardController {
         }
         require_once __DIR__ . '/../../views/pages/create.php';
     }
+
+    public function templates() {
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: /login');
+            exit;
+        }
+        require_once __DIR__ . '/../../views/pages/templates.php';
+    }
+
+    public function themes() {
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: /login');
+            exit;
+        }
+        require_once __DIR__ . '/../../views/pages/themes.php';
+    }
+
+    public function fonts() {
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: /login');
+            exit;
+        }
+        require_once __DIR__ . '/../../views/pages/fonts.php';
+    }
+
+    public function trash() {
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: /login');
+            exit;
+        }
+        require_once __DIR__ . '/../../views/pages/trash.php';
+    }
 }

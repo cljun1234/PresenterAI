@@ -37,6 +37,7 @@
             flex-direction: column;
             padding: 20px;
             flex-shrink: 0;
+            z-index: 10;
         }
 
         .logo {
@@ -102,7 +103,8 @@
             flex-grow: 1;
             display: flex;
             flex-direction: column;
-            overflow-y: auto;
+            overflow: hidden; /* Important for editor */
+            position: relative;
         }
 
         .top-bar {
@@ -110,6 +112,7 @@
             display: flex;
             justify-content: flex-end;
             align-items: center;
+            flex-shrink: 0;
         }
 
         .user-menu {
@@ -140,7 +143,7 @@
             font-size: 0.9rem;
         }
 
-        /* Center Area */
+        /* Creation Steps Common */
         .creation-area {
             flex-grow: 1;
             display: flex;
@@ -152,6 +155,13 @@
             margin: 0 auto;
             width: 100%;
             box-sizing: border-box;
+            animation: fadeIn 0.5s ease-out;
+            overflow-y: auto;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         h1 {
@@ -170,6 +180,7 @@
             text-align: center;
         }
 
+        /* Step 1: Input */
         .input-wrapper {
             width: 100%;
             background: var(--card-bg);
@@ -187,7 +198,7 @@
         }
 
         .type-btn {
-            background: rgba(124, 58, 237, 0.1); /* Subtle purple tint */
+            background: rgba(124, 58, 237, 0.1);
             border: 1px solid var(--accent-color);
             color: var(--accent-color);
             padding: 10px 20px;
@@ -198,17 +209,6 @@
             gap: 8px;
             cursor: pointer;
             transition: all 0.2s;
-        }
-
-        .type-btn:hover {
-            background: rgba(124, 58, 237, 0.2);
-        }
-
-        .type-btn.inactive {
-             /* Style for inactive buttons if we had them, currently just Presentation is active */
-             background: transparent;
-             border-color: transparent;
-             color: #888;
         }
 
         .options-bar {
@@ -227,21 +227,8 @@
             font-size: 0.9rem;
             outline: none;
             cursor: pointer;
-            appearance: none; /* Hide default arrow */
-            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right 10px center;
-            background-size: 12px;
+            appearance: none;
             padding-right: 30px;
-        }
-
-        select:hover {
-            background-color: rgba(255,255,255,0.12);
-        }
-
-        select option {
-            background: var(--dropdown-bg);
-            color: white;
         }
 
         textarea {
@@ -257,15 +244,10 @@
             margin-bottom: 20px;
         }
 
-        textarea::placeholder {
-            color: #555;
-        }
-
         .action-bar {
             display: flex;
-            justify-content: flex-end; /* Align generate button to right */
+            justify-content: flex-end;
             align-items: center;
-            /* border-top: 1px solid rgba(255,255,255,0.05); */
             padding-top: 10px;
         }
 
@@ -274,7 +256,7 @@
             color: white;
             border: none;
             padding: 12px 24px;
-            border-radius: 30px; /* Pill shape */
+            border-radius: 30px;
             font-weight: 600;
             cursor: pointer;
             display: flex;
@@ -289,6 +271,208 @@
             transform: translateY(-1px);
         }
 
+        /* Step 2: Outline */
+        .outline-wrapper {
+            width: 100%;
+            max-width: 800px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .outline-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .outline-list {
+            padding: 20px;
+        }
+
+        .outline-item {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.05);
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .outline-number {
+            background: rgba(255,255,255,0.1);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        /* Step 3: Themes */
+        .theme-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            width: 100%;
+        }
+
+        .theme-card {
+            background: var(--card-bg);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            height: 150px;
+        }
+
+        .theme-card:hover {
+            border-color: rgba(255,255,255,0.2);
+            transform: translateY(-2px);
+        }
+
+        .theme-card.selected {
+            border-color: var(--accent-color);
+            background: rgba(124, 58, 237, 0.05);
+        }
+
+        .theme-preview {
+            flex-grow: 1;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        /* Step 4: Editor */
+        .editor-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #111;
+        }
+
+        .slide-strip {
+            width: 200px;
+            background: #111;
+            border-right: 1px solid #333;
+            overflow-y: auto;
+            padding: 20px 10px;
+            flex-shrink: 0;
+        }
+
+        .slide-thumb {
+            aspect-ratio: 16/9;
+            background: #2D2D2D;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: #555;
+            position: relative;
+        }
+
+        .slide-thumb.active {
+            border-color: var(--accent-color);
+        }
+
+        .slide-number {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            font-size: 0.7rem;
+            color: #888;
+        }
+
+        .editor-main {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            background: #181818;
+        }
+
+        .editor-toolbar {
+            height: 50px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 20px;
+        }
+
+        .tool-btn {
+            background: transparent;
+            border: none;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .tool-btn:hover {
+            color: white;
+        }
+
+        .canvas-area {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            overflow: auto;
+        }
+
+        .slide-canvas {
+            aspect-ratio: 16/9;
+            width: 80%;
+            max-width: 960px;
+            background: white;
+            color: black;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            padding: 60px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* Loader */
+        .loader {
+            border: 4px solid #333;
+            border-radius: 50%;
+            border-top: 4px solid var(--accent-color);
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
     </style>
 </head>
 <body>
@@ -298,33 +482,34 @@
             <span>⚡</span> Gamma
         </div>
 
-        <a href="/" style="text-decoration: none;">
+        <a href="/create" style="text-decoration: none;">
             <button class="btn-new">
-                <span>+</span> Create new AI
+                <span>+</span> New with AI
             </button>
         </a>
 
         <a href="/" class="nav-item">
             <span>🏠</span> Home
         </a>
-        <a href="#" class="nav-item">
+        <a href="/templates" class="nav-item">
             <span>📄</span> Templates
         </a>
-        <a href="#" class="nav-item">
+        <a href="/themes" class="nav-item">
             <span>🎨</span> Themes
         </a>
-        <a href="#" class="nav-item">
+        <a href="/fonts" class="nav-item">
             <span>Aa</span> Custom Fonts
         </a>
 
         <div style="flex-grow: 1;"></div>
 
-        <a href="#" class="nav-item">
+        <a href="/trash" class="nav-item">
             <span>🗑️</span> Trash
         </a>
     </div>
 
     <div class="main-content">
+        <!-- Shared Top Bar -->
         <div class="top-bar">
             <div class="user-menu">
                 <a href="/logout" class="logout-link">Log out</a>
@@ -332,7 +517,8 @@
             </div>
         </div>
 
-        <div class="creation-area">
+        <!-- STEP 1: INPUT -->
+        <div id="step-1" class="creation-area">
             <h1>Generate</h1>
             <div class="subtitle">What would you like to create today?</div>
 
@@ -344,17 +530,11 @@
                 </div>
 
                 <div class="options-bar">
-                    <select>
-                        <option>1 card</option>
-                        <option>2 cards</option>
-                        <option>3 cards</option>
-                        <option>4 cards</option>
-                        <option>5 cards</option>
-                        <option>6 cards</option>
-                        <option>7 cards</option>
-                        <option selected>8 cards</option>
-                        <option>9 cards</option>
-                        <option>10 cards</option>
+                    <select id="card-count">
+                        <option value="4">4 cards</option>
+                        <option value="6">6 cards</option>
+                        <option value="8" selected>8 cards</option>
+                        <option value="10">10 cards</option>
                     </select>
 
                     <select>
@@ -365,23 +545,242 @@
 
                     <select>
                         <option>English (US)</option>
-                        <option>Spanish</option>
-                        <option>French</option>
-                        <option>German</option>
-                        <option>Japanese</option>
                     </select>
                 </div>
 
-                <textarea placeholder="Describe what you'd like to make, e.g. 'How to make sushi, a guide for beginners'"></textarea>
+                <textarea id="prompt-input" placeholder="Describe what you'd like to make, e.g. 'How to make sushi, a guide for beginners'"></textarea>
 
                 <div class="action-bar">
-                    <button class="generate-btn">
+                    <button class="generate-btn" onclick="goToStep2()">
                         <span>✨</span> Generate outline
                     </button>
                 </div>
             </div>
         </div>
+
+        <!-- STEP 2: OUTLINE -->
+        <div id="step-2" class="creation-area hidden">
+            <h1>Outline</h1>
+            <div class="subtitle">We've generated an outline for you. You can edit it below.</div>
+
+            <div class="outline-wrapper">
+                <div class="outline-header">
+                   <span style="font-weight:bold;">Review Outline</span>
+                </div>
+                <div class="outline-list" id="outline-container">
+                    <!-- JS will populate this -->
+                </div>
+                <div class="action-bar" style="padding: 20px; border-top: 1px solid var(--border-color);">
+                     <button style="background:transparent; border:none; color:#aaa; cursor:pointer; margin-right:auto;" onclick="goToStep(1)">Back</button>
+                    <button class="generate-btn" onclick="goToStep3()">
+                        Continue
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 3: THEMES -->
+        <div id="step-3" class="creation-area hidden">
+            <h1>Pick a Theme</h1>
+            <div class="subtitle">Choose a visual style for your presentation.</div>
+
+            <div style="width: 100%; max-width: 900px;">
+                <div class="theme-grid">
+                    <div class="theme-card selected" onclick="selectTheme(this, 'dark')">
+                        <div class="theme-preview" style="background: #1A1A1A; color: white;">Aa</div>
+                        <div style="font-size: 0.9rem; font-weight: 600;">Gamma Dark</div>
+                    </div>
+                    <div class="theme-card" onclick="selectTheme(this, 'light')">
+                        <div class="theme-preview" style="background: #ffffff; color: black; border: 1px solid #ddd;">Aa</div>
+                        <div style="font-size: 0.9rem; font-weight: 600;">Clean White</div>
+                    </div>
+                    <div class="theme-card" onclick="selectTheme(this, 'ocean')">
+                        <div class="theme-preview" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white;">Aa</div>
+                        <div style="font-size: 0.9rem; font-weight: 600;">Ocean Blue</div>
+                    </div>
+                    <div class="theme-card" onclick="selectTheme(this, 'sunset')">
+                        <div class="theme-preview" style="background: linear-gradient(135deg, #ff9966 0%, #ff5e62 100%); color: white;">Aa</div>
+                        <div style="font-size: 0.9rem; font-weight: 600;">Sunset</div>
+                    </div>
+                </div>
+
+                <div class="action-bar" style="margin-top: 40px;">
+                    <button style="background:transparent; border:none; color:#aaa; cursor:pointer; margin-right:auto;" onclick="goToStep(2)">Back</button>
+                    <button class="generate-btn" onclick="goToStep4()">
+                        <span>✨</span> Generate
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- LOADING STATE -->
+        <div id="loading-state" class="creation-area hidden">
+             <div class="loader"></div>
+             <h2 id="loading-text">Generating magic...</h2>
+        </div>
+
+        <!-- STEP 4: EDITOR (FINAL) -->
+        <div id="step-4" class="editor-container hidden">
+            <div class="slide-strip" id="slide-strip">
+                <!-- Thumbnails -->
+            </div>
+
+            <div class="editor-main">
+                <div class="editor-toolbar">
+                    <button class="tool-btn" onclick="goToStep(3)">⬅ Back</button>
+                    <div style="width: 1px; height: 20px; background: #333; margin: 0 10px;"></div>
+                    <span style="font-size: 0.9rem; font-weight: 600;" id="editor-title">Untitled Presentation</span>
+                    <div style="flex-grow: 1;"></div>
+                    <button class="tool-btn">▶ Present</button>
+                    <button class="generate-btn" style="padding: 8px 16px; font-size: 0.8rem;">Share</button>
+                </div>
+
+                <div class="canvas-area">
+                    <div class="slide-canvas" id="slide-canvas">
+                        <h1 id="slide-heading" style="margin-top: 0;">Slide Title</h1>
+                        <p id="slide-body">Slide content goes here...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
+    <script>
+        let currentStep = 1;
+        let selectedTheme = 'dark';
+        let generatedOutline = [];
+
+        function goToStep(step) {
+            // Hide all
+            document.getElementById('step-1').classList.add('hidden');
+            document.getElementById('step-2').classList.add('hidden');
+            document.getElementById('step-3').classList.add('hidden');
+            document.getElementById('step-4').classList.add('hidden');
+            document.getElementById('loading-state').classList.add('hidden');
+
+            // Show target
+            if(step === 1) document.getElementById('step-1').classList.remove('hidden');
+            if(step === 2) document.getElementById('step-2').classList.remove('hidden');
+            if(step === 3) document.getElementById('step-3').classList.remove('hidden');
+            if(step === 4) document.getElementById('step-4').classList.remove('hidden');
+
+            currentStep = step;
+        }
+
+        function showLoading(text, duration, nextStep) {
+             // Hide all
+            document.getElementById('step-1').classList.add('hidden');
+            document.getElementById('step-2').classList.add('hidden');
+            document.getElementById('step-3').classList.add('hidden');
+            document.getElementById('step-4').classList.add('hidden');
+
+            const loader = document.getElementById('loading-state');
+            loader.classList.remove('hidden');
+            document.getElementById('loading-text').innerText = text;
+
+            setTimeout(() => {
+                goToStep(nextStep);
+            }, duration);
+        }
+
+        function goToStep2() {
+            const prompt = document.getElementById('prompt-input').value;
+            const count = parseInt(document.getElementById('card-count').value);
+
+            if (!prompt) {
+                // If empty, just dummy text
+            }
+
+            // Mock Outline Generation
+            generatedOutline = [];
+            generatedOutline.push("Introduction: " + (prompt || "Your Topic"));
+            for(let i=1; i < count - 1; i++) {
+                generatedOutline.push(`Key Point ${i}: Details about point ${i}`);
+            }
+            generatedOutline.push("Conclusion: Summary and next steps");
+
+            // Render Outline
+            const container = document.getElementById('outline-container');
+            container.innerHTML = '';
+            generatedOutline.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'outline-item';
+                div.innerHTML = `
+                    <div class="outline-number">${index + 1}</div>
+                    <div contenteditable="true" style="flex-grow:1; outline:none;">${item}</div>
+                    <div style="cursor:pointer;">✕</div>
+                `;
+                container.appendChild(div);
+            });
+
+            showLoading("Generating outline...", 1500, 2);
+        }
+
+        function goToStep3() {
+            goToStep(3);
+        }
+
+        function selectTheme(el, theme) {
+            document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+            selectedTheme = theme;
+        }
+
+        function goToStep4() {
+             showLoading("Creating presentation...", 2000, 4);
+             renderEditor();
+        }
+
+        function renderEditor() {
+            const title = document.getElementById('prompt-input').value || "Untitled Presentation";
+            document.getElementById('editor-title').innerText = title;
+
+            const strip = document.getElementById('slide-strip');
+            strip.innerHTML = '';
+
+            generatedOutline.forEach((item, index) => {
+                const thumb = document.createElement('div');
+                thumb.className = 'slide-thumb' + (index === 0 ? ' active' : '');
+                thumb.innerHTML = `<span class="slide-number">${index + 1}</span>Slide ${index + 1}`;
+                thumb.onclick = () => {
+                    document.querySelectorAll('.slide-thumb').forEach(t => t.classList.remove('active'));
+                    thumb.classList.add('active');
+                    updateCanvas(item, index);
+                };
+                strip.appendChild(thumb);
+            });
+
+            // Set initial canvas
+            updateCanvas(generatedOutline[0], 0);
+            applyTheme(selectedTheme);
+        }
+
+        function updateCanvas(text, index) {
+            const parts = text.split(':');
+            const heading = parts[0];
+            const body = parts[1] || "Content for this slide...";
+
+            document.getElementById('slide-heading').innerText = heading;
+            document.getElementById('slide-body').innerText = body;
+        }
+
+        function applyTheme(theme) {
+            const canvas = document.getElementById('slide-canvas');
+            if (theme === 'dark') {
+                canvas.style.background = '#1A1A1A';
+                canvas.style.color = '#FFF';
+            } else if (theme === 'light') {
+                canvas.style.background = '#FFF';
+                canvas.style.color = '#000';
+            } else if (theme === 'ocean') {
+                 canvas.style.background = 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)';
+                 canvas.style.color = '#FFF';
+            } else if (theme === 'sunset') {
+                 canvas.style.background = 'linear-gradient(135deg, #ff9966 0%, #ff5e62 100%)';
+                 canvas.style.color = '#FFF';
+            }
+        }
+    </script>
 </body>
 </html>
