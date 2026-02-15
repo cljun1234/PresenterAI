@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('partials/head') %>
+    <title>Gamma Interface - Dashboard</title>
+    <style>
+        /* Empty State Area */
+        .empty-state-container {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            padding: 40px;
+        }
+
+        .choice-card {
+            background: linear-gradient(135deg, #2D2D2D 0%, #1A1A1A 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            width: 300px;
+            height: 350px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center; /* Center content vertically */
+            align-items: center;     /* Center content horizontally */
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            color: white;
+        }
+
+        .choice-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border-color: var(--accent-color);
+        }
+
+        .card-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .card-desc {
+            color: #aaa;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+    <%- include('partials/sidebar', { path: path }) %>
+
+    <div class="main-content">
+        <div class="top-bar">
+            <div class="user-menu">
+                <a href="/logout" class="logout-link">Log out</a>
+                <div class="avatar">U</div>
+            </div>
+        </div>
+
+        <div class="empty-state-container">
+            <a href="/create" class="choice-card">
+                <div class="card-icon">✨</div>
+                <div class="card-title">Generate</div>
+                <div class="card-desc">Create from a one-line prompt in a few seconds</div>
+            </a>
+
+            <div class="choice-card">
+                <div class="card-icon">📝</div>
+                <div class="card-title">Paste in text</div>
+                <div class="card-desc">Create from notes, an outline, or existing content</div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

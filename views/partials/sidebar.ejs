@@ -1,0 +1,30 @@
+<div class="sidebar">
+    <div class="logo">
+        <span>⚡</span> Gamma
+    </div>
+
+    <a href="/create" style="text-decoration: none;">
+        <button class="btn-new">
+            <span>+</span> New with AI
+        </button>
+    </a>
+
+    <a href="/" class="nav-item <%= path === '/' ? 'active' : '' %>">
+        <span>🏠</span> Home
+    </a>
+    <a href="/templates" class="nav-item <%= path === '/templates' ? 'active' : '' %>">
+        <span>📄</span> Templates
+    </a>
+    <a href="/themes" class="nav-item <%= path === '/themes' ? 'active' : '' %>">
+        <span>🎨</span> Themes
+    </a>
+    <a href="/fonts" class="nav-item <%= path === '/fonts' ? 'active' : '' %>">
+        <span>Aa</span> Custom Fonts
+    </a>
+
+    <div style="flex-grow: 1;"></div>
+
+    <a href="/trash" class="nav-item <%= path === '/trash' ? 'active' : '' %>">
+        <span>🗑️</span> Trash
+    </a>
+</div>

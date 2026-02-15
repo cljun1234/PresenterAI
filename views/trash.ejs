@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('partials/head') %>
+    <title>Gamma Interface - Trash</title>
+    <style>
+        .dashboard-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #555;
+            padding-bottom: 100px;
+        }
+    </style>
+</head>
+<body>
+
+    <%- include('partials/sidebar', { path: path }) %>
+
+    <div class="main-content">
+        <div class="top-bar">
+            <div class="user-menu">
+                <a href="/logout" class="logout-link">Log out</a>
+                <div class="avatar">U</div>
+            </div>
+        </div>
+
+        <div class="dashboard-container">
+            <div style="font-size: 3rem; margin-bottom: 20px;">🗑️</div>
+            <div>Your trash is empty.</div>
+        </div>
+    </div>
+
+</body>
+</html>
