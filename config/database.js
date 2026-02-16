@@ -3,7 +3,7 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 require('dotenv').config();
 
-const driver = process.env.DB_DRIVER || 'mysql';
+const driver = process.env.DB_DRIVER || 'sqlite'; // Default to sqlite for easier setup
 
 let pool;
 let db;

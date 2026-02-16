@@ -43,7 +43,7 @@ exports.postLogin = async (req, res) => {
         }
 
     } catch (err) {
-        console.error(err);
+        console.error('Login error details:', err); // Enhanced logging
         req.flash('error', 'An error occurred during login.');
         res.redirect('/login');
     }
