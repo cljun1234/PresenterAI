@@ -572,6 +572,9 @@
                 </div>
                 <div class="action-bar" style="padding: 20px; border-top: 1px solid var(--border-color);">
                      <button style="background:transparent; border:none; color:#aaa; cursor:pointer; margin-right:auto;" onclick="goToStep(1)">Back</button>
+                    <a href="/generate-pptx" target="_blank" class="tool-btn" style="text-decoration: none; margin-right: 15px; color: var(--accent-color); font-weight: bold; border: 1px solid var(--accent-color); padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                        ⬇ Download PPTX
+                    </a>
                     <button class="generate-btn" onclick="goToStep3()">
                         Continue
                     </button>
@@ -606,6 +609,9 @@
 
                 <div class="action-bar" style="margin-top: 40px;">
                     <button style="background:transparent; border:none; color:#aaa; cursor:pointer; margin-right:auto;" onclick="goToStep(2)">Back</button>
+                    <a href="/generate-pptx" target="_blank" class="tool-btn" style="text-decoration: none; margin-right: 15px; color: var(--accent-color); font-weight: bold; border: 1px solid var(--accent-color); padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                        ⬇ Download PPTX
+                    </a>
                     <button class="generate-btn" onclick="goToStep4()">
                         <span>✨</span> Generate
                     </button>
@@ -632,6 +638,9 @@
                     <span style="font-size: 0.9rem; font-weight: 600;" id="editor-title">Untitled Presentation</span>
                     <div style="flex-grow: 1;"></div>
                     <button class="tool-btn">▶ Present</button>
+                    <a href="/generate-pptx" target="_blank" class="tool-btn" style="text-decoration: none; color: var(--accent-color); font-weight: bold; margin-right: 10px; display: flex; align-items: center;">
+                        ⬇ Download PPTX
+                    </a>
                     <button class="generate-btn" style="padding: 8px 16px; font-size: 0.8rem;">Share</button>
                 </div>
 
