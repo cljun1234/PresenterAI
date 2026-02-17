@@ -1,6 +1,7 @@
 <?php
 session_start();
 
+require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../src/AltoRouter.php';
 require_once __DIR__ . '/../config/database.php';
 
@@ -26,6 +27,7 @@ $router->map('GET', '/logout', 'AuthController#logout', 'logout');
 // Dashboard
 $router->map('GET', '/', 'DashboardController#index', 'dashboard');
 $router->map('GET', '/create', 'DashboardController#create', 'create');
+$router->map('GET', '/generate-pptx', 'PresentationController#generate', 'generate_pptx');
 $router->map('GET', '/templates', 'DashboardController#templates', 'templates');
 $router->map('GET', '/themes', 'DashboardController#themes', 'themes');
 $router->map('GET', '/fonts', 'DashboardController#fonts', 'fonts');
