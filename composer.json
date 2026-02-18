@@ -1,0 +1,13 @@
+{
+    "name": "jules/gamma-mockup",
+    "description": "Gamma Mockup",
+    "require": {
+        "phpoffice/phppresentation": "^1.0"
+    },
+    "authors": [
+        {
+            "name": "Jules",
+            "email": "jules@example.com"
+        }
+    ]
+}

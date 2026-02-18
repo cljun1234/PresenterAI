@@ -1,0 +1,5 @@
+vendor/
+server.log
+database/database.sqlite
+*.log
+*.png
