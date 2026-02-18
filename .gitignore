@@ -1,4 +1,4 @@
-vendor/
+storage/templates/base.pptx
 server.log
 database/database.sqlite
 *.log
