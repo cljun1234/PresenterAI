@@ -1,55 +1,64 @@
 <?php
-session_start();
-
 require_once __DIR__ . '/../vendor/autoload.php';
-require_once __DIR__ . '/../src/AltoRouter.php';
+
+// Define controllers
+require_once __DIR__ . '/../src/Controllers/AuthController.php';
+require_once __DIR__ . '/../src/Controllers/DashboardController.php';
+require_once __DIR__ . '/../src/Controllers/PresentationController.php';
+
+// Configure database
 require_once __DIR__ . '/../config/database.php';
 
-// Autoload Controllers
-spl_autoload_register(function ($class) {
-    if (strpos($class, 'Controller') !== false) {
-        $file = __DIR__ . '/../src/Controllers/' . $class . '.php';
-        if (file_exists($file)) {
-            require_once $file;
+session_start();
+
+$request = $_SERVER['REQUEST_URI'];
+$path = parse_url($request, PHP_URL_PATH);
+
+// Basic Router
+switch ($path) {
+    case '/':
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: /login');
+            exit;
         }
-    }
-});
+        $controller = new DashboardController();
+        $controller->index();
+        break;
 
-$router = new AltoRouter();
+    case '/login':
+        $controller = new AuthController();
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $controller->processLogin();
+        } else {
+            $controller->showLogin();
+        }
+        break;
 
-// Define Routes
+    case '/logout':
+        $controller = new AuthController();
+        $controller->logout();
+        break;
 
-// Auth
-$router->map('GET', '/login', 'AuthController#showLogin', 'login');
-$router->map('POST', '/login', 'AuthController#processLogin', 'login_post');
-$router->map('GET', '/logout', 'AuthController#logout', 'logout');
+    case '/create':
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: /login');
+            exit;
+        }
+        // Simple view render
+        require __DIR__ . '/../views/pages/create.php';
+        break;
 
-// Dashboard
-$router->map('GET', '/', 'DashboardController#index', 'dashboard');
-$router->map('GET', '/create', 'DashboardController#create', 'create');
-$router->map('GET', '/generate-pptx', 'PresentationController#generate', 'generate_pptx');
-$router->map('GET', '/templates', 'DashboardController#templates', 'templates');
-$router->map('GET', '/themes', 'DashboardController#themes', 'themes');
-$router->map('GET', '/fonts', 'DashboardController#fonts', 'fonts');
-$router->map('GET', '/trash', 'DashboardController#trash', 'trash');
+    case '/generate-pptx':
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: /login');
+            exit;
+        }
+        $controller = new PresentationController();
+        $controller->generate();
+        break;
 
-// Match request
-$match = $router->match();
-
-if ($match && is_callable($match['target'])) {
-    call_user_func_array($match['target'], $match['params']);
-} elseif ($match) {
-    list($controller, $action) = explode('#', $match['target']);
-    if (class_exists($controller) && method_exists($controller, $action)) {
-        $obj = new $controller();
-        call_user_func_array([$obj, $action], $match['params']);
-    } else {
-        // Handle error: controller or method not found
-        header($_SERVER["SERVER_PROTOCOL"] . ' 500 Internal Server Error');
-        echo "Error: Controller or action not found.";
-    }
-} else {
-    // 404
-    header($_SERVER["SERVER_PROTOCOL"] . ' 404 Not Found');
-    echo "404 Not Found";
+    default:
+        http_response_code(404);
+        echo "404 Not Found";
+        break;
 }
